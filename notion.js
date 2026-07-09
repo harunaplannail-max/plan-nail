@@ -1,0 +1,303 @@
+const https = require('https');
+
+const NOTION_TOKEN = (process.env.NOTION_TOKEN || '').trim();
+const MATERIALS_DB = (process.env.MATERIALS_DB || '').trim();
+const DESIGNS_DB   = (process.env.DESIGNS_DB   || '').trim();
+const EVENTS_DB    = (process.env.EVENTS_DB    || '').trim();
+const PARTS_DB     = (process.env.PARTS_DB     || '').trim();
+const TRENDS_DB    = (process.env.TRENDS_DB    || '').trim();
+const FEEDBACK_DB  = (process.env.FEEDBACK_DB  || '').trim();
+
+function readJsonBody(req) {
+  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
+  if (req.body && typeof req.body === 'string') {
+    try { return Promise.resolve(JSON.parse(req.body)); } catch(e) { return Promise.resolve({}); }
+  }
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', chunk => raw += chunk);
+    req.on('end', () => {
+      try { resolve(raw ? JSON.parse(raw) : {}); }
+      catch(e) { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
+function notionRequest(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const options = {
+      hostname: 'api.notion.com',
+      path,
+      method,
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
+      }
+    };
+    const req = https.request(options, res => {
+      let raw = '';
+      res.on('data', chunk => raw += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)); }
+        catch(e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+function driveDirect(url) {
+  if (!url) return url;
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) ||
+            url.match(/drive\.google\.com\/open\?id=([^&]+)/) ||
+            url.match(/[?&]id=([^&]+)/);
+  if (m && m[1]) {
+    return `https://lh3.googleusercontent.com/d/${m[1]}=w2000`;
+  }
+  return url;
+}
+
+function driveVideoEmbed(url) {
+  if (!url) return '';
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) ||
+            url.match(/drive\.google\.com\/open\?id=([^&]+)/) ||
+            url.match(/[?&]id=([^&]+)/);
+  if (m && m[1]) {
+    return `https://drive.google.com/file/d/${m[1]}/preview`;
+  }
+  return url;
+}
+
+function getRawUrl(props, name) {
+  const p = props[name];
+  if (!p) return '';
+  if (p.type === 'url') return p.url || '';
+  if (p.type === 'rich_text') return p.rich_text.map(t => t.plain_text).join('');
+  return '';
+}
+
+function getProp(props, name) {
+  const p = props[name];
+  if (!p) return '';
+  switch(p.type) {
+    case 'title':        return p.title.map(t=>t.plain_text).join('');
+    case 'rich_text':    return driveDirect(p.rich_text.map(t=>t.plain_text).join(''));
+    case 'select':       return p.select?.name || '';
+    case 'multi_select': return p.multi_select.map(s=>s.name).join(',');
+    case 'files':        return driveDirect(p.files?.[0]?.file?.url || p.files?.[0]?.external?.url || '');
+    case 'url':          return driveDirect(p.url || '');
+    case 'number':       return p.number ?? '';
+    case 'date':         return p.date?.start || '';
+    case 'checkbox':     return p.checkbox ?? false;
+    case 'relation':     return p.relation.map(r=>r.id).join(',');
+    default:             return '';
+  }
+}
+
+function getPropImages(props, name) {
+  const p = props[name];
+  if (!p) return [];
+  if (p.type === 'files') {
+    return (p.files || [])
+      .map(f => f.file?.url || f.external?.url || '')
+      .filter(Boolean)
+      .map(driveDirect);
+  }
+  if (p.type === 'rich_text') {
+    const text = p.rich_text.map(t => t.plain_text).join('');
+    return text.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean).map(driveDirect);
+  }
+  if (p.type === 'url') {
+    return p.url ? [driveDirect(p.url)] : [];
+  }
+  return [];
+}
+
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  const type = req.query.type;
+
+  try {
+    if (type === 'feedback' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const text = (body && body.text ? String(body.text) : '').trim();
+      if (!text) { res.status(400).json({ error: '内容が空です' }); return; }
+      if (!FEEDBACK_DB) { res.status(500).json({ error: 'フィードバック機能は準備中です' }); return; }
+      const trimmed = text.slice(0, 1900);
+      const r = await notionRequest('POST', '/v1/pages', {
+        parent: { database_id: FEEDBACK_DB },
+        properties: {
+          '内容': { title: [{ text: { content: trimmed } }] },
+        },
+      });
+      if (r.object === 'error') { res.status(500).json({ notionError: r }); return; }
+      res.json({ ok: true });
+      return;
+    }
+
+    if (type === 'debug') {
+      res.json({
+        hasToken: !!NOTION_TOKEN,
+        tokenStart: NOTION_TOKEN ? NOTION_TOKEN.substring(0,6) : null,
+        materialsDb: MATERIALS_DB || null,
+        designsDb: DESIGNS_DB || null,
+        eventsDb: EVENTS_DB || null,
+        partsDb: PARTS_DB || null,
+        trendsDb: TRENDS_DB || null,
+        feedbackDb: FEEDBACK_DB || null,
+      });
+      return;
+    }
+
+    if (type === 'materials') {
+      const r = await notionRequest('POST', `/v1/databases/${MATERIALS_DB}/query`, { page_size: 100 });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        const thumb = getProp(p,'サムネイル');
+        const materialImages = getPropImages(p,'商材画像');
+        const images = [thumb, ...materialImages].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          category: getProp(p,'カテゴリ'),
+          css: getProp(p,'CSS値') || '#cccccc',
+          maker: getProp(p,'メーカー'),
+          badge: getProp(p,'バッジ'),
+          desc: getProp(p,'説明'),
+          thumb: thumb,
+          material: materialImages[0] || '',
+          images: images,
+          mood: getProp(p,'ムード'),
+          alt: getProp(p,'代替品'),
+          created: page.created_time,
+          releaseDate: getProp(p,'発売日') || null,
+          video: driveVideoEmbed(getRawUrl(p,'商材動画')),
+        };
+      }));
+      return;
+    }
+
+    if (type === 'parts') {
+      const r = await notionRequest('POST', `/v1/databases/${PARTS_DB}/query`, { page_size: 100 });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        const thumb = getProp(p,'サムネイル');
+        const partImages = getPropImages(p,'商材画像');
+        const images = [thumb, ...partImages].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+        // 在庫数は0がありえる値なので、空文字と0を区別できるようにする
+        const stockRaw = getProp(p,'在庫数');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          category: getProp(p,'カテゴリ'),
+          css: getProp(p,'CSS値') || '#cccccc',
+          maker: getProp(p,'メーカー'),
+          badge: getProp(p,'バッジ'),
+          desc: getProp(p,'説明'),
+          thumb: thumb,
+          material: partImages[0] || '',
+          images: images,
+          mood: getProp(p,'ムード'),
+          alt: getProp(p,'代替品'),
+          created: page.created_time,
+          price: getProp(p,'希望小売価格'), // パーツ自体の価格(現状非公開)
+          decoPrice: getProp(p,'デコ料金') || null, // ネイルデザインに1個追加する際の施術料金
+          stock: stockRaw === '' ? null : stockRaw, // 在庫数(0=SOLD OUT)
+          size: getProp(p,'サイズ mm') || null,
+          releaseDate: getProp(p,'発売日') || null,
+        };
+      }));
+      return;
+    }
+
+    if (type === 'trends') {
+      const r = await notionRequest('POST', `/v1/databases/${TRENDS_DB}/query`, { page_size: 100 });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        const thumb = getProp(p,'サムネイル');
+        const trendImages = getPropImages(p,'商材画像');
+        const images = [thumb, ...trendImages].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+        const usedItemsRaw = getProp(p,'使用アイテム');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          category: getProp(p,'カテゴリ'),
+          css: getProp(p,'CSS値') || '#cccccc',
+          badge: getProp(p,'バッジ'),
+          desc: getProp(p,'説明'),
+          thumb: thumb,
+          material: trendImages[0] || '',
+          images: images,
+          mood: getProp(p,'ムード'),
+          moodCoord: getProp(p,'ムード座標') || null,
+          created: page.created_time,
+          releaseDate: getProp(p,'発売日') || null,
+          usedItems: usedItemsRaw ? usedItemsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+          instagramUrl: getProp(p,'Instagram投稿URL') || null,
+        };
+      }));
+      return;
+    }
+
+    if (type === 'designs') {
+      const r = await notionRequest('POST', `/v1/databases/${DESIGNS_DB}/query`, { page_size: 100 });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        const photoImages = getPropImages(p,'デザイン画像');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          tag: getProp(p,'タグ'),
+          price: getProp(p,'価格'),
+          photo: photoImages[0] || '',
+          images: photoImages,
+          bg: getProp(p,'背景色') || '#1a1a1a',
+          mood: getProp(p,'ムード'),
+        };
+      }));
+      return;
+    }
+
+    if (type === 'events') {
+      const r = await notionRequest('POST', `/v1/databases/${EVENTS_DB}/query`, { page_size: 100 });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          date: getProp(p,'イベント日'),
+          place: getProp(p,'場所'),
+          desc: getProp(p,'説明'),
+          flyer: getProp(p,'フライヤー'),
+          mood: getProp(p,'ムード'),
+          upcoming: getProp(p,'次回出店'),
+        };
+      }));
+      return;
+    }
+
+    res.status(400).json({ error: 'type required' });
+
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+};
