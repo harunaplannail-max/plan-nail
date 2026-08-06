@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>背景透過ツール — plan.nail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Kosugi&display=swap" rel="stylesheet">
+<style>
+  :root{ --c1:#00e5ff; --c3:#ffe600; --gray-mid:#8a8a8a; }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body{ background:#101013; color:#e8e8e8; font-family:'Kosugi',sans-serif; padding-bottom:40px; }
+
+  .head{ padding:22px 18px 14px; text-align:center; border-bottom:1px solid #26262a; }
+  .head h1{ font-family:'Special Elite',serif; font-size:.9rem; letter-spacing:.06em; margin-bottom:6px; color:#fff; }
+  .head p{ font-size:.62rem; color:var(--gray-mid); line-height:1.75; }
+
+  .panel{ padding:15px 14px; }
+  .btn{
+    display:block; width:100%; text-align:center; font-family:'Special Elite',serif; font-size:.7rem;
+    padding:13px 0; border-radius:12px; cursor:pointer; border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.07); color:#fff; margin-bottom:8px; transition:.15s;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn.primary{ border-color:var(--c1); color:var(--c1); background:rgba(0,229,255,.12); }
+  .btn:disabled{ opacity:.4; }
+  input[type=file]{ display:none; }
+
+  .status{
+    padding:11px 13px; border-radius:11px; font-size:.63rem; line-height:1.7;
+    background:rgba(0,229,255,.07); border:1px solid rgba(0,229,255,.22); color:rgba(255,255,255,.82);
+    margin-bottom:12px; display:none;
+  }
+  .status.show{ display:block; }
+  .status.warn{ background:rgba(255,230,0,.08); border-color:rgba(255,230,0,.3); }
+  .bar{ height:3px; border-radius:999px; background:rgba(255,255,255,.14); margin-top:8px; overflow:hidden; }
+  .bar i{ display:block; height:100%; width:0; background:var(--c1); border-radius:999px; transition:width .3s; }
+
+  .tune{ display:flex; align-items:center; gap:10px; padding:11px 13px; margin-bottom:10px;
+    border-radius:11px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); }
+  .tune label{ font-size:.6rem; color:var(--gray-mid); white-space:nowrap; }
+  .tune input{ flex:1; accent-color:var(--c1); }
+  .tune span{ font-family:'Special Elite',serif; font-size:.62rem; color:var(--c1); width:26px; text-align:right; }
+
+  .results{ padding:0 14px; }
+  .item{ margin-bottom:20px; }
+  .item-name{ font-size:.58rem; color:var(--gray-mid); margin-bottom:7px; word-break:break-all; }
+  .compare{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .cell{ position:relative; border-radius:12px; overflow:hidden; aspect-ratio:3/4; }
+  /* サイトと同じコンクリート背景の上で確認できるようにする */
+  .cell.after{
+    background:
+      linear-gradient(rgba(16,16,19,.72), rgba(16,16,19,.72)),
+      repeating-linear-gradient(112deg, #2b2b2f 0 3px, #26262a 3px 6px),
+      radial-gradient(ellipse 80% 60% at 50% 30%, #33333a, #1a1a1e 75%);
+  }
+  .cell.before{ background:#1c1c20; }
+  .cell img{ width:100%; height:100%; object-fit:contain; display:block; }
+  /* 実際のサイトと同じ影を当てて、切れ目が出ないか確認する */
+  .cell.after img{ filter:drop-shadow(0 6px 12px rgba(0,0,0,.28)) drop-shadow(0 2px 20px rgba(0,0,0,.18)); }
+  .cell-tag{
+    position:absolute; top:6px; left:6px; font-family:'Special Elite',serif; font-size:.5rem;
+    letter-spacing:.08em; padding:2px 8px; border-radius:999px;
+    background:rgba(0,0,0,.55); color:rgba(255,255,255,.75); backdrop-filter:blur(4px);
+  }
+  .dl{
+    display:block; text-align:center; font-family:'Special Elite',serif; font-size:.6rem;
+    padding:8px 0; margin-top:8px; border-radius:999px; text-decoration:none;
+    border:1px solid rgba(255,255,255,.25); color:#ddd;
+  }
+
+  .tip{
+    margin:18px 14px 0; padding:12px 14px; border-radius:12px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12);
+    font-size:.61rem; line-height:1.85; color:rgba(255,255,255,.68);
+  }
+  .tip b{ color:var(--c3); }
+  .lic{ margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.1);
+    font-size:.56rem; color:rgba(255,255,255,.42); line-height:1.7; }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>背景透過ツール</h1>
+  <p>商材写真の背景を切り抜いて、透明のPNGにします。<br>処理はすべてこの端末の中で完結し、写真は外部に送信されません。</p>
+</div>
+
+<div class="panel">
+  <div class="status" id="status"><span id="statusText"></span><div class="bar"><i id="bar"></i></div></div>
+
+  <div class="tune">
+    <label>切り抜きの強さ</label>
+    <input type="range" id="thr" min="0" max="60" value="12">
+    <span id="thrVal">12</span>
+  </div>
+
+  <label class="btn primary" for="fileInput">写真を選ぶ(複数可)</label>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+  <button class="btn" id="dlAll" disabled>すべてダウンロード</button>
+</div>
+
+<div class="results" id="results"></div>
+
+<div class="tip">
+  <b>確認してほしいこと</b><br>
+  ・右側(AFTER)はサイトと同じコンクリート背景+同じ影をかけています<br>
+  ・爪の輪郭がギザギザしていないか<br>
+  ・四角い切れ目が消えているか<br>
+  ・グリッターやクリア部分が不自然に消えていないか<br><br>
+  背景がうっすら残る場合は「切り抜きの強さ」を上げ、<br>
+  爪の縁が欠ける場合は下げてから、選び直してください。
+  <div class="lic">使用モデル: ormbg(Apache-2.0 / 商用利用可)</div>
+</div>
+
+<script type="module">
+const statusEl = document.getElementById('status');
+const statusText = document.getElementById('statusText');
+const bar = document.getElementById('bar');
+const results = document.getElementById('results');
+const dlAll = document.getElementById('dlAll');
+const thr = document.getElementById('thr');
+const thrVal = document.getElementById('thrVal');
+
+thr.addEventListener('input', () => { thrVal.textContent = thr.value; });
+
+const done = [];
+let remover = null;
+
+function setStatus(msg, pct, warn){
+  statusEl.classList.add('show');
+  statusEl.classList.toggle('warn', !!warn);
+  statusText.textContent = msg;
+  if (typeof pct === 'number') bar.style.width = pct + '%';
+}
+
+async function loadEngine(){
+  if (remover) return remover;
+  setStatus('AIモデルを読み込んでいます… 初回のみ数十MBのダウンロードがあります(2回目以降は高速)', 10);
+  const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6');
+  // ormbg は Apache-2.0 ライセンスで商用利用が可能
+  remover = await pipeline('background-removal', 'onnx-community/ormbg-ONNX', { device: 'wasm' });
+  setStatus('準備完了', 100);
+  return remover;
+}
+
+// 背景がうっすら残る「もや」を取り除き、輪郭のなめらかさは保つ
+function cleanAlpha(canvas, cutoff){
+  const ctx = canvas.getContext('2d');
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+  const lo = cutoff;          // これ以下は完全に透明
+  const hi = 255 - cutoff / 2; // これ以上は完全に不透明
+  for (let i = 3; i < d.length; i += 4){
+    const a = d[i];
+    if (a <= lo) d[i] = 0;
+    else if (a >= hi) d[i] = 255;
+    else d[i] = Math.round(((a - lo) / (hi - lo)) * 255);
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+document.getElementById('fileInput').addEventListener('change', async (ev) => {
+  const files = [...(ev.target.files || [])];
+  ev.target.value = '';
+  if (!files.length) return;
+
+  try {
+    const engine = await loadEngine();
+    const cutoff = parseInt(thr.value, 10);
+
+    for (let i = 0; i < files.length; i++){
+      const file = files[i];
+      setStatus(`処理中… ${i + 1} / ${files.length} 枚目(${file.name})`,
+                Math.round((i / files.length) * 100));
+
+      const original = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+
+      const out = await engine(original);
+      const rawImage = Array.isArray(out) ? out[0] : out;
+      const canvas = rawImage.toCanvas();
+      cleanAlpha(canvas, cutoff);
+      const cut = canvas.toDataURL('image/png'); // 透明を保つためPNG
+
+      const outName = file.name.replace(/\.[^.]+$/, '') + '_transparent.png';
+      done.push({ name: outName, url: cut });
+
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML =
+        '<p class="item-name">' + file.name + '</p>' +
+        '<div class="compare">' +
+          '<div class="cell before"><span class="cell-tag">BEFORE</span>' +
+            '<img src="' + original + '" alt=""></div>' +
+          '<div class="cell after"><span class="cell-tag">AFTER</span>' +
+            '<img src="' + cut + '" alt=""></div>' +
+        '</div>' +
+        '<a class="dl" href="' + cut + '" download="' + outName + '">この画像をダウンロード</a>';
+      results.appendChild(item);
+    }
+
+    setStatus(`完了しました(${done.length}枚)。仕上がりを確認してください。`, 100);
+    dlAll.disabled = false;
+
+  } catch (err) {
+    console.error(err);
+    setStatus('処理に失敗しました: ' + (err && err.message ? err.message : err), 0, true);
+  }
+});
+
+dlAll.addEventListener('click', () => {
+  done.forEach((d, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = d.url;
+      a.download = d.name;
+      a.click();
+    }, i * 350);
+  });
+});
+</script>
+
+</body>
+</html>
