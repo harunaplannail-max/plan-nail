@@ -1,0 +1,869 @@
+const https = require('https');
+
+const NOTION_TOKEN = (process.env.NOTION_TOKEN || '').trim();
+const MATERIALS_DB = (process.env.MATERIALS_DB || '').trim();
+const DESIGNS_DB   = (process.env.DESIGNS_DB   || '').trim();
+const EVENTS_DB    = (process.env.EVENTS_DB    || '').trim();
+const PARTS_DB     = (process.env.PARTS_DB     || '').trim();
+const TRENDS_DB    = (process.env.TRENDS_DB    || '').trim();
+const FEEDBACK_DB  = (process.env.FEEDBACK_DB  || '').trim();
+const SETTINGS_DB  = (process.env.SETTINGS_DB  || '').trim();
+const ANALYTICS_DB = (process.env.ANALYTICS_DB || '').trim();
+const MEDIA_DB      = (process.env.MEDIA_DB      || '').trim();
+const GUESTS_DB      = (process.env.GUESTS_DB      || '').trim();
+
+function readJsonBody(req) {
+  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
+  if (req.body && typeof req.body === 'string') {
+    try { return Promise.resolve(JSON.parse(req.body)); } catch(e) { return Promise.resolve({}); }
+  }
+  return new Promise((resolve) => {
+    let raw = '';
+    req.setEncoding('utf8'); // 送られてくる日本語(アイテム名など)も区切りで割れないように
+    req.on('data', chunk => raw += chunk);
+    req.on('end', () => {
+      try { resolve(raw ? JSON.parse(raw) : {}); }
+      catch(e) { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
+function notionRequest(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const options = {
+      hostname: 'api.notion.com',
+      path,
+      method,
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
+      }
+    };
+    const req = https.request(options, res => {
+      let raw = '';
+      res.setEncoding('utf8'); // 日本語が通信の区切りで割れて文字化けしないよう、文字単位でつなぐ
+      res.on('data', chunk => raw += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(raw)); }
+        catch(e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+// Notion APIは1回のクエリで最大100件までしか返さない。
+// 101件目以降がまるごと欠落してしまうため(実際にカラーが100件を超えて発生した)、
+// next_cursor を辿って全ページ分を取得しきる。
+async function notionQueryAll(dbId, extraBody) {
+  const results = [];
+  let cursor = undefined;
+  // 無限ループ防止のため上限を設ける(100件×20回=2000件まで対応)
+  for (let i = 0; i < 20; i++) {
+    const body = { page_size: 100, ...(extraBody || {}) };
+    if (cursor) body.start_cursor = cursor;
+    const r = await notionRequest('POST', `/v1/databases/${dbId}/query`, body);
+    if (!r.results) return r; // エラーレスポンスはそのまま返して呼び出し側で処理させる
+    results.push(...r.results);
+    if (!r.has_more || !r.next_cursor) break;
+    cursor = r.next_cursor;
+  }
+  return { results };
+}
+
+function driveDirect(url, width) {
+  if (!url) return url;
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) ||
+            url.match(/drive\.google\.com\/open\?id=([^&]+)/) ||
+            url.match(/[?&]id=([^&]+)/);
+  if (m && m[1]) {
+    // 以前は常に=w2000(フル解像度)を使っていたため、詳細ポップアップ用としては過剰で、
+    // 通信量・デコード負荷が体感のラグにつながっていた。900pxあればスマホの詳細表示で
+    // 十分綺麗なので、こちらをデフォルトに引き下げる。
+    // -rp: PNGで返すよう指定(指定しないと透過PNGがJPEGに変換され、透明部分が黒くなることがある)
+    return `https://lh3.googleusercontent.com/d/${m[1]}=w${width || 900}-rp`;
+  }
+  return url;
+}
+
+// サムネイル(グリッドカード・PLAY/COLOR/PARTS窓で常時アニメーションするチップ)専用の
+// 極小サイズ変換。表示サイズが数十px〜100px程度なのに、以前はここもフル解像度(2000px)を
+// 読み込んでいたため、100件超のグリッドや常時動くアニメーションで大きな負荷になっていた。
+function driveThumb(url) {
+  if (!url) return url;
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) ||
+            url.match(/drive\.google\.com\/open\?id=([^&]+)/) ||
+            url.match(/[?&]id=([^&]+)/);
+  if (m && m[1]) {
+    // -rp: PNGで返すよう指定(透明部分が黒くならないように)
+    return `https://lh3.googleusercontent.com/d/${m[1]}=w320-rp`;
+  }
+  return url;
+}
+
+// getPropと同じ抽出ロジックだが、画像URLをサムネイル用の極小サイズで返す版
+function getPropThumb(props, name) {
+  const p = props[name];
+  if (!p) return '';
+  if (p.type === 'files')     return driveThumb(p.files?.[0]?.file?.url || p.files?.[0]?.external?.url || '');
+  if (p.type === 'url')       return driveThumb(p.url || '');
+  if (p.type === 'rich_text') return driveThumb(p.rich_text.map(t=>t.plain_text).join(''));
+  return '';
+}
+
+function driveVideoEmbed(url) {
+  if (!url) return '';
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) ||
+            url.match(/drive\.google\.com\/open\?id=([^&]+)/) ||
+            url.match(/[?&]id=([^&]+)/);
+  if (m && m[1]) {
+    return `https://drive.google.com/file/d/${m[1]}/preview`;
+  }
+  return url;
+}
+
+function getRawUrl(props, name) {
+  const p = props[name];
+  if (!p) return '';
+  if (p.type === 'url') return p.url || '';
+  if (p.type === 'rich_text') return p.rich_text.map(t => t.plain_text).join('');
+  return '';
+}
+
+// 1つのプロパティに入っている画像を全部取り出す(シリーズ画像など、複数枚入れる欄用)。
+// ファイル欄なら添付の全ファイル、テキスト/URL欄なら改行・スペース・カンマで区切られた全リンクを返す。
+function getAllUrls(props, name) {
+  const p = props[name];
+  if (!p) return [];
+  let urls = [];
+  if (p.type === 'files') {
+    urls = (p.files || []).map(f => f?.file?.url || f?.external?.url || '');
+  } else if (p.type === 'url') {
+    urls = (p.url || '').split(/[\s,、]+/);
+  } else if (p.type === 'rich_text') {
+    const text = p.rich_text.map(t => t.href || t.plain_text).join(' ');
+    urls = text.match(/https?:\/\/[^\s,、]+/g) || [];
+  }
+  return urls.map(u => u.trim()).filter(Boolean).map(u => driveDirect(u));
+}
+
+// 最近(30日以内)に編集されたページか。画像を上げたばかりのページを見分けるのに使う
+function isRecentlyEdited(page) {
+  const t = Date.parse(page && page.last_edited_time);
+  return !isNaN(t) && (Date.now() - t) < 30 * 24 * 60 * 60 * 1000;
+}
+
+// カンマ区切りの複数選択を配列にする
+function splitTags(v) { return String(v || '').split(',').map(x => x.trim()).filter(Boolean); }
+
+function getProp(props, name) {
+  const p = props[name];
+  if (!p) return '';
+  switch(p.type) {
+    case 'title':        return p.title.map(t=>t.plain_text).join('');
+    case 'rich_text':    return driveDirect(p.rich_text.map(t=>t.plain_text).join(''));
+    case 'select':       return (p.select?.name || '').trim();
+    case 'multi_select': return p.multi_select.map(s=>s.name).join(',');
+    case 'files':        return driveDirect(p.files?.[0]?.file?.url || p.files?.[0]?.external?.url || '');
+    case 'url':          return driveDirect(p.url || '');
+    case 'number':       return p.number ?? '';
+    case 'date':         return p.date?.start || '';
+    case 'checkbox':     return p.checkbox ?? false;
+    case 'relation':     return p.relation.map(r=>r.id).join(',');
+    default:             return '';
+  }
+}
+
+function getPropImages(props, name) {
+  const p = props[name];
+  if (!p) return [];
+  // 注意: .map(driveDirect) と書くと、Array.mapがコールバックに(要素, インデックス, 配列)を渡すため、
+  // driveDirectの第2引数(width)にインデックスがそのまま入ってしまう(2枚目=w1, 3枚目=w2 ...という
+  // 極小画像になり、3枚目以降が実質見えなくなるバグの原因だった)。必ず単項の矢印関数で包む。
+  if (p.type === 'files') {
+    return (p.files || [])
+      .map(f => f.file?.url || f.external?.url || '')
+      .filter(Boolean)
+      .map(url => driveDirect(url));
+  }
+  if (p.type === 'rich_text') {
+    const text = p.rich_text.map(t => t.plain_text).join('');
+    return text.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean).map(url => driveDirect(url));
+  }
+  if (p.type === 'url') {
+    return p.url ? [driveDirect(p.url)] : [];
+  }
+  return [];
+}
+
+
+// 「Instagramタグ」プロパティ(テキストまたはマルチセレクト)をタグ配列に変換する。
+// カンマ区切り対応・先頭の#は付いていても付いていなくてもOK(取り除いて統一)。
+function getInstagramTags(props) {
+  const raw = getProp(props, 'Instagramタグ');
+  if (!raw) return [];
+  return String(raw)
+    .split(',')
+    .map(s => s.trim().replace(/^#/, ''))
+    .filter(Boolean);
+}
+
+// URLを貼るだけでタイトル・サムネイルを自動取得するための補助関数。
+// YouTubeは公式のoEmbed APIでタイトル・サムネイルをまとめて確実に取得できる(認証不要)。
+// それ以外(note.com等)はページ先頭のOGタグ(og:title/og:image)を軽く読みに行く。
+function isYoutubeUrl(url) {
+  return !!(url && /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)/.test(url));
+}
+function fetchYoutubeOEmbed(url) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
+    try {
+      const oembedUrl = 'https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url);
+      const req = https.get(oembedUrl, { timeout: 2000 }, res => {
+        let raw = '';
+        res.setEncoding('utf8'); // 日本語が通信の区切りで割れて文字化けしないよう、文字単位でつなぐ
+      res.on('data', chunk => raw += chunk);
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(raw);
+            finish({ title: data.title || null, image: data.thumbnail_url || null });
+          } catch (e) { finish(null); }
+        });
+        res.on('error', () => finish(null));
+      });
+      req.on('error', () => finish(null));
+      req.on('timeout', () => { req.destroy(); finish(null); });
+    } catch (e) { finish(null); }
+  });
+}
+function fetchOgMeta(url) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
+    try {
+      const u = new URL(url);
+      const req = https.get({
+        hostname: u.hostname,
+        path: u.pathname + u.search,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PlanNailBot/1.0)' },
+        timeout: 2000,
+      }, res => {
+        let raw = '';
+        res.setEncoding('utf8'); // 日本語が通信の区切りで割れて文字化けしないよう、文字単位でつなぐ
+      res.on('data', chunk => {
+          raw += chunk;
+          // OGタグは通常<head>内、ページ先頭付近にあるので大きく読み過ぎないうちに打ち切る
+          if (raw.length > 150000) res.destroy();
+        });
+        res.on('end', () => {
+          const img = raw.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+                   || raw.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+          const ogTitle = raw.match(/<meta[^>]+property=["']og:title["'][^>]*content=["']([^"']+)["']/i)
+                       || raw.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
+          const plainTitle = raw.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const ogDesc = raw.match(/<meta[^>]+property=["']og:description["'][^>]*content=["']([^"']+)["']/i)
+                      || raw.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
+          const nameDesc = raw.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']+)["']/i)
+                        || raw.match(/<meta[^>]+content=["']([^"']+)["'][^>]*name=["']description["']/i);
+          finish({
+            image: img ? img[1] : null,
+            title: ogTitle ? ogTitle[1] : (plainTitle ? plainTitle[1].trim() : null),
+            desc: ogDesc ? ogDesc[1] : (nameDesc ? nameDesc[1] : null),
+          });
+        });
+        res.on('error', () => finish(null));
+      });
+      req.on('error', () => finish(null));
+      req.on('timeout', () => { req.destroy(); finish(null); });
+    } catch (e) { finish(null); }
+  });
+}
+
+// ── サーバー側キャッシュ ──
+// Notionのデータは頻繁には変わらないので、一度作った各typeのレスポンスを
+// サーバーのメモリに一定時間ためておく。2人目以降の訪問者はNotionを経由せず
+// 即座に表示できる(=ラグの根本対策)。
+// Vercelのサーバーレス関数はコールドスタートでリセットされるが、温まっている間は
+// 同一インスタンスが使い回されるためキャッシュとして機能する。
+
+// ── Pinterestのピンを画像として使う ──
+// Notionの画像欄に「自分のピンのURL」(pinterest.com/pin/… や pin.it/…)を貼るだけで、
+// サーバー側でピンのページを開いて、写真そのものの画像URL(og:image)を取り出す。
+// 一度取り出したURLは覚えておく(毎回Pinterestを見に行かないように)。
+
+// ── ムード座標の自動計算 ──
+// トレンドのグラフ(上=POP/下=DARK、左=SIMPLE/右=GAL、0〜100)の位置を、
+// Notionで付けた「宇宙の惑星」「宇宙のサブジャンル」「質感タグ」「モチーフタグ」から自動で決める。
+// 「ムード座標」を手で入れた作品は、そちらを優先する。
+const MOOD_PLANET = { ROMANTIC:[38,38], METALLIC:[68,48], DARK:[48,84], NATURAL:[14,48], REVIVAL:[72,24] };
+const MOOD_SUB = {
+  'Sheer':[22,40],'Pearl':[40,36],'Rose':[42,46],'Classic Romantic':[32,44],'Y2K Girlhood':[70,20],
+  'Magnet':[58,52],'Chrome':[78,46],'Clear':[30,40],'Star Galaxy':[66,58],'Aurora':[64,42],'Bubble':[56,30],
+  'Gothic':[46,90],'Grunge':[34,82],'Mystic':[50,80],'Cyber':[72,80],'Street':[66,72],'Extreme':[80,92],'Piercing':[62,76],'Punk':[70,78],
+  'Nude':[8,52],'Beige':[12,56],'Milk':[14,40],'Clean Girl':[10,46],'Quiet Luxury':[18,54],
+  'Y2K':[84,20],'Mint':[44,22],'Mcbling':[92,18],'Y3K':[74,40],'2010s Swag':[82,30],'Kidcore':[66,8],
+};
+const MOOD_TEXTURE = { GLAZE:[-8,0], CHROME:[10,0], SEA:[0,-4], TUMBLR:[4,-4], 'GRUNGE TECHNIQUES':[-4,6] };
+const MOOD_MOTIF = { DECORATION:[8,0], FLOWERS:[-2,-2], FLAME:[6,6], CREATURES:[4,4], PATTERNS:[4,-2], ETHNIC:[0,0] };
+function hashJitter(id, k) { let h = 2166136261; const str = String(id) + k; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000 - 0.5; }
+function autoMoodCoord(u, id) {
+  if (!u) return null;
+  const pts = [];
+  (u.subgenres || []).forEach(s => { const k = Object.keys(MOOD_SUB).find(x => x.toLowerCase() === String(s).toLowerCase()); if (k) pts.push(MOOD_SUB[k]); });
+  if (!pts.length) (u.planets || []).forEach(p => { const v = MOOD_PLANET[String(p).toUpperCase()]; if (v) pts.push(v); });
+  if (!pts.length) return null;
+  let x = pts.reduce((a, p) => a + p[0], 0) / pts.length, y = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+  (u.textures || []).forEach(t => { const v = MOOD_TEXTURE[String(t).toUpperCase()]; if (v) { x += v[0]; y += v[1]; } });
+  (u.motifs || []).forEach(t => { const v = MOOD_MOTIF[String(t).toUpperCase()]; if (v) { x += v[0]; y += v[1]; } });
+  x += hashJitter(id, 'x') * 10; y += hashJitter(id, 'y') * 10;   // 同じ分類の作品が1点に重ならないよう、少しだけずらす(毎回同じ位置)
+  const c = v => Math.max(3, Math.min(97, Math.round(v)));
+  return c(x) + ',' + c(y);
+}
+
+const pinCache = new Map(); // ピンURL -> { img, saves, url, at }
+const PIN_TTL = 1000*60*60*6; // 保存数は変わるので、6時間ごとに取り直す
+async function fetchPin(u) {
+  const c = pinCache.get(u); if (c && Date.now()-c.at < PIN_TTL) return c;
+  try {
+    const r = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1', 'Accept-Language': 'ja,en;q=0.8' } });
+    const html = await r.text();
+    const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    // 保存数:ピンのページに埋め込まれたデータから読む(Pinterestの都合で取れないこともある)
+    const sm = html.match(/"aggregated_stats"\s*:\s*\{[^}]*"saves"\s*:\s*(\d+)/) || html.match(/"save_count"\s*:\s*(\d+)/) || html.match(/"repin_count"\s*:\s*(\d+)/);
+    const out = { img: m ? m[1].replace(/&amp;/g,'&') : (c ? c.img : ''), saves: sm ? Number(sm[1]) : (c ? c.saves : null), url: r.url || u, at: Date.now() };
+    if (out.img) pinCache.set(u, out); return out;
+  } catch (e) { return c || { img:'', saves:null, url:u, at:Date.now() }; }
+}
+// Pinterestの公式API(任意)。Vercelの環境変数 PINTEREST_TOKEN にアクセストークンを入れると、
+// 自分のピンのビュー(インプレッション)・タップ(ピンのクリック)・保存を自動で取得する(公式APIは直近90日分の合計)
+const pinAnCache = new Map();
+async function fetchPinAnalytics(pinUrl) {
+  const token = process.env.PINTEREST_TOKEN; if (!token) return null;
+  const m = String(pinUrl||'').match(/\/pin\/(\d+)/); if (!m) return null; const id = m[1];
+  const c = pinAnCache.get(id); if (c && Date.now()-c.at < 1000*60*60*6) return c;
+  try {
+    const end = new Date(), start = new Date(Date.now()-89*24*60*60*1000); const f = d => d.toISOString().slice(0,10);
+    const r = await fetch(`https://api.pinterest.com/v5/pins/${id}/analytics?start_date=${f(start)}&end_date=${f(end)}&metric_types=IMPRESSION,PIN_CLICK,SAVE`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return null; const j = await r.json(); const all = j.all || j; const sum = all.summary_metrics || {};
+    const out = { views: sum.IMPRESSION ?? null, taps: sum.PIN_CLICK ?? null, saves: sum.SAVE ?? null, at: Date.now() };
+    pinAnCache.set(id, out); return out;
+  } catch (e) { return null; }
+}
+function isPinterestUrl(u) { return /^https?:\/\/(www\.)?(pinterest\.[a-z.]+\/pin\/|pin\.it\/)/i.test(String(u || '')); }
+async function resolvePinterest(u) { if (!isPinterestUrl(u)) return u; return (await fetchPin(u)).img; }
+// 作品データの中のピンURLを画像URLに置き換え、保存数とピンへのリンクも付ける
+async function resolvePinterestInItems(items) {
+  await Promise.all(items.map(async it => {
+    const pinSrc = (isPinterestUrl(it.pinterestUrl) ? it.pinterestUrl : '') || [it.thumb, it.thumbSmall, ...(Array.isArray(it.images)?it.images:[])].find(isPinterestUrl);
+    if (pinSrc) { const info = await fetchPin(pinSrc); it.pinUrl = info.url; it.pinSaves = info.saves;
+      if (!it.thumb && info.img) { it.thumb = info.img; it.thumbSmall = info.img; if (!it.images || !it.images.length) it.images = [info.img]; } // サムネイルが空なら、ピンの写真を使う
+      const an = await fetchPinAnalytics(info.url); // Pinterestの公式APIが設定されていれば、ビュー・タップも自動で
+      if (an) { if (it.pinViews == null) it.pinViews = an.views; if (it.pinTaps == null) it.pinTaps = an.taps; if (an.saves != null && it.pinSaves == null) it.pinSaves = an.saves; } }
+    if (it.pinSavesManual != null) it.pinSaves = it.pinSavesManual; // 手入力があれば、そちらを優先
+    if (isPinterestUrl(it.thumb)) it.thumb = await resolvePinterest(it.thumb);
+    if (isPinterestUrl(it.thumbSmall)) it.thumbSmall = await resolvePinterest(it.thumbSmall);
+    if (Array.isArray(it.images)) it.images = (await Promise.all(it.images.map(resolvePinterest))).filter(Boolean);
+    if (!it.thumbSmall) it.thumbSmall = it.thumb;
+  }));
+  return items;
+}
+
+const responseCache = new Map(); // type -> { data, expiresAt }
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5分(Notionを更新したら最大5分で反映)
+function getCache(type) {
+  const c = responseCache.get(type);
+  if (c && c.expiresAt > Date.now()) return c.data;
+  return null;
+}
+function setCache(type, data) {
+  responseCache.set(type, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  const type = req.query.type;
+
+  try {
+    if (type === 'feedback' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const text = (body && body.text ? String(body.text) : '').trim();
+      if (!text) { res.status(400).json({ error: '内容が空です' }); return; }
+      if (!FEEDBACK_DB) { res.status(500).json({ error: 'フィードバック機能は準備中です' }); return; }
+      const trimmed = text.slice(0, 1900);
+      const r = await notionRequest('POST', '/v1/pages', {
+        parent: { database_id: FEEDBACK_DB },
+        properties: {
+          '内容': { title: [{ text: { content: trimmed } }] },
+        },
+      });
+      if (r.object === 'error') { res.status(500).json({ notionError: r }); return; }
+      res.json({ ok: true });
+      return;
+    }
+
+    if (type === 'settings' && req.method === 'POST') {
+      // MENU(ナビ)の並び順をADMINから保存する。既存の「サイト設定DB」(名前/値の
+      // キーバリュー方式)に「メニュー順」という行を追加/更新する形で、新しいDBは増やさない。
+      if (!SETTINGS_DB) { res.status(500).json({ error: 'サイト設定DBが未設定です' }); return; }
+      const body = await readJsonBody(req);
+      const menuOrder = Array.isArray(body?.menuOrder) ? body.menuOrder : null;
+      if (!menuOrder || !menuOrder.length) { res.status(400).json({ error: 'menuOrderが空です' }); return; }
+      const valueStr = menuOrder.join(',');
+
+      const q = await notionQueryAll(SETTINGS_DB);
+      if (!q.results) { res.json({ notionError: q }); return; }
+      // 「値」プロパティの型は既存行(テーマ等)に合わせる。select/rich_textどちらでも壊れないように。
+      let valueType = 'rich_text';
+      let existingPage = null;
+      q.results.forEach(page => {
+        if (page.properties['値']) valueType = page.properties['値'].type;
+        if (getProp(page.properties, '名前') === 'メニュー順') existingPage = page;
+      });
+      const valueProp = valueType === 'select'
+        ? { select: { name: valueStr } }
+        : { rich_text: [{ text: { content: valueStr } }] };
+
+      const r = existingPage
+        ? await notionRequest('PATCH', `/v1/pages/${existingPage.id}`, { properties: { '値': valueProp } })
+        : await notionRequest('POST', '/v1/pages', {
+            parent: { database_id: SETTINGS_DB },
+            properties: { '名前': { title: [{ text: { content: 'メニュー順' } }] }, '値': valueProp },
+          });
+      if (r.object === 'error') { res.status(500).json({ notionError: r }); return; }
+      res.json({ ok: true, menuOrder });
+      return;
+    }
+
+    if (type === 'settings') {
+      // サイト設定DB(テーマ着せ替え等)。DBが未設定でもサイトが壊れないよう
+      // 常にデフォルト値を返すフェイルセーフにしてある。
+      if (!SETTINGS_DB) { res.json({ theme: 'DEFAULT' }); return; }
+      const r = await notionRequest('POST', `/v1/databases/${SETTINGS_DB}/query`, { page_size: 20 });
+      if (!r.results) { res.json({ theme: 'DEFAULT', notionError: r }); return; }
+      const settings = {};
+      r.results.forEach(page => {
+        const p = page.properties;
+        const key = getProp(p, '名前');
+        const value = getProp(p, '値');
+        if (key) settings[key] = value;
+      });
+      const menuOrderRaw = settings['メニュー順'] || '';
+      res.json({
+        theme: settings['テーマ'] || 'DEFAULT',
+        menuOrder: menuOrderRaw ? menuOrderRaw.split(',').map(s => s.trim()).filter(Boolean) : null,
+      });
+      return;
+    }
+
+    if (type === 'debug') {
+      res.json({
+        hasToken: !!NOTION_TOKEN,
+        tokenStart: NOTION_TOKEN ? NOTION_TOKEN.substring(0,6) : null,
+        materialsDb: MATERIALS_DB || null,
+        designsDb: DESIGNS_DB || null,
+        eventsDb: EVENTS_DB || null,
+        partsDb: PARTS_DB || null,
+        trendsDb: TRENDS_DB || null,
+        feedbackDb: FEEDBACK_DB || null,
+        analyticsDb: ANALYTICS_DB || null,
+        mediaDb: MEDIA_DB || null,
+        guestsDb: GUESTS_DB || null,
+      });
+      return;
+    }
+
+    if (type === 'listdbs') {
+      // インテグレーションから実際に見えているデータベース一覧をNotionのSearch APIで直接取得する。
+      // 環境変数に入れたIDが正しいか/コネクト漏れがないかを、手作業のID照合なしで確認するためのデバッグ用。
+      const r = await notionRequest('POST', '/v1/search', {
+        filter: { property: 'object', value: 'database' },
+        page_size: 100,
+      });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(db => {
+        const titleProp = db.title || [];
+        const title = titleProp.map(t => t.plain_text).join('') || '(無題)';
+        return {
+          id: db.id,
+          title,
+          url: db.url || null,
+        };
+      }));
+      return;
+    }
+
+    if (type === 'materials') {
+      // CDNエッジ自体にもキャッシュさせる。サーバーレス関数がコールドスタートで
+      // 眠っていても、Vercelのエッジが直接この結果を返せるようになり、
+      // 「起動直後の最初の訪問者だけ遅い」問題を防げる。
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      const cached = getCache('materials');
+      if (cached) { res.json(cached); return; }
+      const r = await notionQueryAll(MATERIALS_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      const mapped = r.results.map(page => {
+        const p = page.properties;
+        const thumb = getProp(p,'サムネイル');
+        const thumbSmall = getPropThumb(p,'サムネイル');
+        const materialImages = getPropImages(p,'商材画像');
+        const images = [thumb, ...materialImages].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          category: getProp(p,'カテゴリ'),
+          css: getProp(p,'CSS値') || '#cccccc',
+          maker: getProp(p,'メーカー'),
+          badge: getProp(p,'バッジ'),
+          craft: getProp(p,'特殊技法') || '', // 例:クロスモールド等、手作りパーツを使う技法(選択式)
+          series: getProp(p,'シリーズ名') || '', // メーカーのシリーズもの(例: metal mag)。シリーズ内の色すべてで同じ名前にする
+          seriesColorList: getProp(p,'シリーズ全色リスト') || '', // シリーズ内の代表1商品にだけ入力。カンマ区切りで全色番号(例: mm-01,mm-02,...)
+          seriesDesc: getProp(p,'シリーズ説明') || '', // 同じく代表1商品にだけ入力
+          seriesImage: getProp(p,'シリーズ画像') || '', // 全色をまとめて写した画像。代表1商品にだけ入力(任意)
+          seriesImages: getAllUrls(p,'シリーズ画像'), // 複数枚入れた場合はすべて(スワイプで表示)
+          desc: getProp(p,'説明'),
+          thumb: thumb,
+          // 新しく上げた(または差し替えた)画像は、Googleの極小サイズ(320px)だと透明部分が黒く
+          // 変換されることがある。最近編集したカラーだけ、正しく透過される通常サイズを使う。
+          // 古いカラーは軽い極小サイズのまま(全部を通常サイズにするとPLAYなどが重くなるため)。
+          thumbSmall: isRecentlyEdited(page) ? (thumb || thumbSmall) : (thumbSmall || thumb),
+          material: materialImages[0] || '',
+          images: images,
+          mood: getProp(p,'ムード'),
+          alt: getProp(p,'代替品'),
+          created: page.created_time,
+          releaseDate: getProp(p,'発売日') || null,
+          arrivalDate: getProp(p,'入荷日') || null, // Planに入荷した日(空なら登録日=createdで判定)
+          video: driveVideoEmbed(getRawUrl(p,'商材動画')),
+          instagramTags: getInstagramTags(p),
+        };
+      });
+      setCache('materials', mapped);
+      res.json(mapped);
+      return;
+    }
+
+    if (type === 'parts') {
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      const cached = getCache('parts');
+      if (cached) { res.json(cached); return; }
+      const r = await notionQueryAll(PARTS_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      const mapped = r.results.map(page => {
+        const p = page.properties;
+        const thumb = getProp(p,'サムネイル');
+        const thumbSmall = getPropThumb(p,'サムネイル');
+        const partImages = getPropImages(p,'商材画像');
+        const images = [thumb, ...partImages].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+        // 在庫数は0がありえる値なので、空文字と0を区別できるようにする
+        const stockRaw = getProp(p,'在庫数');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          category: getProp(p,'カテゴリ'),
+          css: getProp(p,'CSS値') || '#cccccc',
+          maker: getProp(p,'メーカー'),
+          badge: getProp(p,'バッジ'),
+          craft: getProp(p,'特殊技法') || '', // 例:クロスモールド等、手作りパーツを使う技法(選択式)
+          desc: getProp(p,'説明'),
+          thumb: thumb,
+          // パーツは透過の切り抜き画像なので、Googleの極小サイズ(320px)だと透明部分が黒く
+          // 変換されることがある(新しく上げた画像で発生)。正しく透過される通常サイズを使う。
+          thumbSmall: thumb || thumbSmall,
+          material: partImages[0] || '',
+          images: images,
+          mood: getProp(p,'ムード'),
+          alt: getProp(p,'代替品'),
+          created: page.created_time,
+          price: getProp(p,'希望小売価格'), // パーツ自体の価格(現状非公開)
+          decoPrice: getProp(p,'デコ料金') || null, // ネイルデザインに1個追加する際の施術料金
+          stock: stockRaw === '' ? null : stockRaw, // 在庫数(0=SOLD OUT)
+          size: getProp(p,'サイズ mm') || null,
+          releaseDate: getProp(p,'発売日') || null,
+          arrivalDate: getProp(p,'入荷日') || null, // Planに入荷した日(空なら登録日=createdで判定)
+          // 色違いのパーツをまとめる。同じシリーズ名のパーツがサイトで「色違い」として並ぶ
+          series: getProp(p,'シリーズ名') || '',
+          seriesDesc: getProp(p,'シリーズ説明') || '',
+          seriesImages: getAllUrls(p,'シリーズ画像'),
+          instagramTags: getInstagramTags(p),
+        };
+      });
+      setCache('parts', mapped);
+      res.json(mapped);
+      return;
+    }
+
+    if (type === 'trends') {
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      const cached = getCache('trends');
+      if (cached) { res.json(cached); return; }
+      const r = await notionQueryAll(TRENDS_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      const mapped = r.results.map(page => {
+        const p = page.properties;
+        const thumb = getProp(p,'サムネイル');
+        const thumbSmall = getPropThumb(p,'サムネイル');
+        const trendImages = getPropImages(p,'商材画像');
+        const images = [thumb, ...trendImages].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+        const usedItemsRaw = getProp(p,'使用アイテム');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          category: getProp(p,'カテゴリ'),
+          css: getProp(p,'CSS値') || '#cccccc',
+          badge: getProp(p,'バッジ'),
+          craft: getProp(p,'特殊技法') || '', // 例:クロスモールド等、手作りパーツを使う技法(選択式)
+          desc: getProp(p,'説明'),
+          thumb: thumb,
+          thumbSmall: thumbSmall || thumb,
+          material: trendImages[0] || '',
+          images: images,
+          mood: getProp(p,'ムード'),
+          moodCoord: getProp(p,'ムード座標') || null,
+          created: page.created_time,
+          releaseDate: getProp(p,'発売日') || null,
+          usedItems: usedItemsRaw ? usedItemsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+          instagramUrl: getProp(p,'Instagram投稿URL') || null,
+          instagramTags: getInstagramTags(p),
+          // Pinterestのアナリティクス(手入力)。保存が空欄なら、ピンから自動で読み取った数を使う
+          pinterestUrl: getProp(p,'Pinterest URL') || '', // 自分のピンのリンク(ここに貼るだけでOK)
+          pinViews: getProp(p,'Pinterestビュー')!=='' ? Number(getProp(p,'Pinterestビュー')) : null,
+          pinTaps: getProp(p,'Pinterestタップ')!=='' ? Number(getProp(p,'Pinterestタップ')) : null,
+          pinSavesManual: getProp(p,'Pinterest保存')!=='' ? Number(getProp(p,'Pinterest保存')) : null,
+          // NAIL ART UNIVERSE用の分類(複数可)。Notionで付けるだけで宇宙のギャラリーに出る
+          universe: {
+            planets: splitTags(getProp(p,'宇宙の惑星')),
+            subgenres: splitTags(getProp(p,'宇宙のサブジャンル')),
+            motifs: splitTags(getProp(p,'モチーフタグ')),
+            textures: splitTags(getProp(p,'質感タグ')),
+            trends: splitTags(getProp(p,'トレンドタグ')),
+            order: Number(getProp(p,'表示順')) || 9999,
+          },
+        };
+      });
+      mapped.forEach(it => { if (!it.moodCoord) { const a = autoMoodCoord(it.universe, it.id); if (a) { it.moodCoord = a; it.moodAuto = true; } } }); // ムード座標が空なら自動で
+      await resolvePinterestInItems(mapped); // ピンのURLが貼られていれば、写真の画像URLに変換
+      setCache('trends', mapped);
+      res.json(mapped);
+      return;
+    }
+
+    if (type === 'designs') {
+      const r = await notionQueryAll(DESIGNS_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        const photoImages = getPropImages(p,'デザイン画像');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          tag: getProp(p,'タグ'),
+          price: getProp(p,'価格'),
+          photo: photoImages[0] || '',
+          images: photoImages,
+          bg: getProp(p,'背景色') || '#1a1a1a',
+          mood: getProp(p,'ムード'),
+          instagramUrl: getProp(p,'Instagram投稿URL') || null,
+          instagramTags: getInstagramTags(p),
+          artist: getProp(p,'作者') || '', // 面貸しネイリストの作品集を絞り込むための名前(ゲストDBの「名前」と一致させる)
+        };
+      }));
+      return;
+    }
+
+    if (type === 'events') {
+      const r = await notionQueryAll(EVENTS_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        const flyerImages = getPropImages(p, 'フライヤー');
+        return {
+          id: page.id,
+          name: getProp(p,'名前'),
+          date: getProp(p,'イベント日'),
+          place: getProp(p,'場所'),
+          mapUrl: getProp(p,'場所リンク') || '',
+          desc: getProp(p,'説明'),
+          flyer: flyerImages[0] || '',
+          images: flyerImages, // 複数枚登録されている場合、詳細ポップアップで横スクロール表示する
+          mood: getProp(p,'ムード'),
+          upcoming: getProp(p,'次回出店'),
+          newsType: getProp(p,'タイプ'), // 'EVENT' | 'PRODUCT' | 'NEWS'
+          status: getProp(p,'公開ステータス') || '通常', // '通常' | 'COMING SOON' | 'SECRET'
+          noBlur: getProp(p,'ぼかし解除') === true, // COMING SOON時、フライヤーをぼかさずクリアに見せたい場合はON
+        };
+      }));
+      return;
+    }
+
+    if (type === 'guests') {
+      // 面貸し・独立ネイリストのプロフィール一覧。人数が増えても対応できるようDB化。
+      if (!GUESTS_DB) { res.json([]); return; }
+      const r = await notionQueryAll(GUESTS_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      res.json(r.results.map(page => {
+        const p = page.properties;
+        return {
+          id: page.id,
+          name: getProp(p, '名前'),
+          specialty: getProp(p, '肩書き'),
+          bio: getProp(p, '自己紹介'),
+          photo: getProp(p, '写真'),
+          instagram: getProp(p, 'Instagramリンク'),
+          booking: getProp(p, '予約リンク'),
+        };
+      }));
+      return;
+    }
+
+    if (type === 'media') {
+      // note.com記事・YouTube動画のリンクカード一覧(埋め込みではなく外部へ飛ばすだけなので
+      // Instagram oEmbedの時のような仕様変更リスクが無く、メンテナンスが軽い)
+      if (!MEDIA_DB) { res.json([]); return; }
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      const cached = getCache('media');
+      if (cached) { res.json(cached); return; }
+      const r = await notionQueryAll(MEDIA_DB);
+      if (!r.results) { res.json({ notionError: r }); return; }
+      const filtered = r.results.filter(page => {
+        // 「公開」チェックボックスが未入力(プロパティ自体が無い)場合は、
+        // 今まで通りの挙動(=常に表示)にするため、プロパティが存在する時だけ判定する
+        const has = Object.prototype.hasOwnProperty.call(page.properties, '公開');
+        return has ? getProp(page.properties, '公開') === true : true;
+      });
+      const items = await Promise.all(filtered.map(async page => {
+        const p = page.properties;
+        const url = getProp(p, 'URL');
+        let title = getProp(p, 'タイトル');
+        let thumbnail = getProp(p, 'サムネイル');
+        let desc = getProp(p, '説明');
+        if (url && (!title || !thumbnail || !desc)) {
+          // 空いている項目があれば、URLから自動取得を試みる
+          // (取れなくても致命的ではないので握りつぶし、既に入力済みの値は上書きしない)
+          const meta = await (isYoutubeUrl(url) ? fetchYoutubeOEmbed(url) : fetchOgMeta(url)).catch(() => null);
+          if (meta) {
+            if (!title && meta.title) title = meta.title;
+            if (!thumbnail && meta.image) thumbnail = meta.image;
+            if (!desc && meta.desc) desc = meta.desc; // YouTubeのoEmbedには概要が含まれないため、YouTubeは手入力のみ反映される
+          }
+        }
+        return {
+          id: page.id,
+          title: title || '',
+          thumbnail: thumbnail || '',
+          url,
+          mediaType: getProp(p, 'タイプ'), // 'NOTE' | 'YOUTUBE'
+          desc: desc || '',
+          publishDate: getProp(p, '公開日') || '',
+          order: p['表示順']?.number ?? null,
+        };
+      }));
+      setCache('media', items);
+      res.json(items);
+      return;
+    }
+
+    if (type === 'featured') {
+      // 「今月の推し」棚の自動選出。直近30日のitem_view(source=color)を集計し、
+      // 閲覧回数が多い順にランキングを返す。人による選定は一切行わない。
+      // データが少ない期間の埋め合わせ(新着順フォールバック)はフロント側(notionMaterials)で行う。
+      if (!ANALYTICS_DB) { res.json([]); return; }
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      const cached = getCache('featured');
+      if (cached) { res.json(cached); return; }
+      const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const r = await notionQueryAll(ANALYTICS_DB, {
+        filter: {
+          and: [
+            { property: 'タイプ', select: { equals: 'item_view' } },
+            { property: 'ソース', select: { equals: 'color' } },
+            { timestamp: 'created_time', created_time: { on_or_after: sinceDate } },
+          ],
+        },
+      });
+      if (!r.results) { res.json({ notionError: r }); return; }
+      const counts = {};
+      r.results.forEach(page => {
+        const name = getProp(page.properties, '名前');
+        if (!name) return;
+        counts[name] = (counts[name] || 0) + 1;
+      });
+      const ranked = Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 12);
+      setCache('featured', ranked);
+      res.json(ranked);
+      return;
+    }
+
+    if (type === 'track' && req.method === 'POST') {
+      // 人気分析の記録。サイト訪問(pageview)とアイテム閲覧(item_view)を
+      // 分析DBに1行ずつ記録する。分析DB未設定/失敗時もサイト本体には一切影響させない
+      // (常に200を返し、フロント側でエラー処理を意識させない)。
+      if (!ANALYTICS_DB) { res.json({ ok: false }); return; }
+      const body = await readJsonBody(req);
+      const kind = String(body.kind || '').slice(0, 30);      // 'pageview' | 'item_view'
+      const target = String(body.target || '').slice(0, 200); // アイテム名 or 'site'
+      const source = String(body.source || '').slice(0, 30);  // 'color' | 'parts' | 'trend' | 'site'
+      if (!kind) { res.json({ ok: false }); return; }
+      try {
+        await notionRequest('POST', '/v1/pages', {
+          parent: { database_id: ANALYTICS_DB },
+          properties: {
+            '名前': { title: [{ text: { content: target || kind } }] },
+            'タイプ': { select: { name: kind } },
+            'ソース': { select: { name: source || 'other' } },
+          },
+        });
+      } catch (e) { /* 記録失敗はサイト側に影響させないので握りつぶす */ }
+      res.json({ ok: true });
+      return;
+    }
+
+    if (type === 'analytics') {
+      // ADMIN画面の分析タブ用。直近60日分だけ取得して集計はフロント側で行う
+      // (件数が増えてもNotion側の負荷・レスポンスサイズを抑えるため期間を区切る)。
+      if (!ANALYTICS_DB) { res.json({ events: [] }); return; }
+      const cached = getCache('analytics');
+      if (cached) { res.json(cached); return; }
+      const sinceDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+      const r = await notionQueryAll(ANALYTICS_DB, {
+        filter: { timestamp: 'created_time', created_time: { on_or_after: sinceDate } },
+      });
+      if (!r.results) { res.json({ events: [], notionError: r }); return; }
+      const events = r.results.map(page => {
+        const p = page.properties;
+        return {
+          kind: getProp(p, 'タイプ'),
+          target: getProp(p, '名前'),
+          source: getProp(p, 'ソース'),
+          date: page.created_time,
+        };
+      });
+      const payload = { events };
+      setCache('analytics', payload);
+      res.json(payload);
+      return;
+    }
+
+    res.status(400).json({ error: 'type required' });
+
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+};
