@@ -179,6 +179,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .galaxy-entry{display:block;margin:10px 4px 22px;text-decoration:none;text-align:center;-webkit-tap-highlight-color:transparent;}
 .galaxy-entry .ge-frame{display:block;height:300px;}
 .galaxy-entry .ge-iframe{display:block;width:100%;height:100%;border:0;background:transparent;pointer-events:none;}
+.galaxy-entry .ge-canvas{display:block;width:100%;height:100%;pointer-events:none;}
+.galaxy-entry.ge-off .ge-frame{display:none;} /* 3Dが使えない端末では、文字だけの入口にする */
 .galaxy-entry .ge-name{display:block;font-family:'Special Elite','Kosugi',sans-serif;color:#fff;font-size:1.02rem;letter-spacing:.34em;padding-left:.34em;}
 /* ボタンの右の矢印(›)は外す。ボタン全体がガラスで押せる形なので、矢印がなくても伝わる */
 .lam-go{display:none !important;}
@@ -1273,14 +1275,103 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
 
   <!-- 銀河ジャンルマップへの入り口(別ページ universe.html)。3Dの宇宙で、5大分類・サブジャンル・作品写真を旅する -->
   <a class="galaxy-entry" href="./universe.html" aria-label="GALAXY OF NAIL">
-    <span class="ge-frame"><iframe class="ge-iframe" data-src="./universe.html?entrance=1" title="GALAXY OF NAIL" tabindex="-1" scrolling="no"></iframe></span>
+    <span class="ge-frame"></span>
     <span class="ge-name">GALAXY OF NAIL</span>
   </a>
   <script>
-  /* 入口の惑星は、画面に入ってきたときに初めて読み込む */
-  (function(){ var a=document.querySelector('.galaxy-entry'); if(!a) return; var f=a.querySelector('.ge-iframe'); if(!f) return;
-    function load(){ if(!f.getAttribute('src')) f.setAttribute('src', f.getAttribute('data-src')); }
-    if('IntersectionObserver' in window){ var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ load(); io.disconnect(); } },{ rootMargin:'120px' }); io.observe(a); } else load();
+  /* 入口の惑星:GALAXY 本編と同じ惑星と月を、このページの中に直接描く。
+     作り方は galaxy-core.js(本編 universe.html と共用)。本編の惑星や月を直せば、ここにも同じものが出る。
+     背景は透明にして、ホームの固定背景(#fixedBg)の上にそのまま浮かせる(スクロールしても背景がずれない)。
+     画面に入ってきたときに初めて three.js と galaxy-core.js を読み込む。
+     GE_MODE を 'iframe' にすると、以前の iframe 方式(universe.html?entrance=1)に戻せる。 */
+  (function(){
+    var GE_MODE='direct';
+    var a=document.querySelector('.galaxy-entry'); if(!a) return; var frame=a.querySelector('.ge-frame'); if(!frame) return;
+    function off(){ a.classList.add('ge-off'); }
+    function loadScript(src){ return new Promise(function(ok,ng){ var s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=ng; document.head.appendChild(s); }); }
+
+    function startIframe(){ var f=document.createElement('iframe'); f.className='ge-iframe'; f.title='GALAXY OF NAIL'; f.tabIndex=-1; f.setAttribute('scrolling','no'); f.src='./universe.html?entrance=1'; frame.appendChild(f); }
+
+    function startDirect(){
+      var need=[];
+      if(!window.THREE) need.push('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+      var chain=Promise.resolve();
+      need.forEach(function(src){ chain=chain.then(function(){ return loadScript(src); }); });
+      chain.then(function(){ return window.GalaxyCore ? null : loadScript('galaxy-core.js?v=20261111'); })
+        .then(function(){ try{ build(); }catch(e){ console.error(e); off(); } })
+        .catch(function(){ off(); });
+    }
+
+    function build(){
+      var C=window.GalaxyCore, T=window.THREE;
+      var cv=document.createElement('canvas'); cv.className='ge-canvas'; frame.appendChild(cv);
+      var renderer=new T.WebGLRenderer({ canvas:cv, antialias:true, alpha:true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+      renderer.outputEncoding=T.sRGBEncoding;
+      renderer.toneMapping=T.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+      renderer.setClearColor(0x000000,0); /* 背景は透明に */
+      var scene=new T.Scene();
+      var camera=new T.PerspectiveCamera(52, 1, .1, 700);
+      C.addLights(scene);
+      /* 柔らかい映り込み:硬い帯のない、なめらかなグラデーションだけを映す(METALLICの黒い帯の対策) */
+      (function(){ var tx=C.canvasTex(512,256,function(g,w,h){ var lg=g.createLinearGradient(0,0,0,h); lg.addColorStop(0,'#57506e'); lg.addColorStop(.48,'#efeaf6'); lg.addColorStop(.56,'#d9d2e6'); lg.addColorStop(1,'#3a3650'); g.fillStyle=lg; g.fillRect(0,0,w,h); });
+        tx.mapping=T.EquirectangularReflectionMapping; var pm=new T.PMREMGenerator(renderer); scene.environment=pm.fromEquirectangular(tx).texture; tx.dispose(); pm.dispose(); })();
+
+      /* 5つの惑星から、ランダムに1つ(?planet=romantic などで指定もできる) */
+      var cats=C.TAXONOMY.categories, want=(new URLSearchParams(location.search).get('planet')||'').toLowerCase(), D=null;
+      cats.forEach(function(c){ if(c.id===want) D=c; });
+      if(!D) D=cats[Math.floor(Math.random()*cats.length)];
+      var P=C.buildPlanet(D, { onGroup:function(g){ scene.add(g); } });
+      if(D.id==='dark') C.linkNeoTribal(P.moonG, P.moons, P.links);
+      var size=D.size;
+      P.group.position.set(0,0,0); P.moonG.rotation.y=0;
+
+      /* 影:惑星の真下に濃く柔らかい楕円。衛星にも、それぞれ小さな影 */
+      var shadowTex=C.canvasTex(256,256,function(g,w,h){ var r=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); r.addColorStop(0,'rgba(0,0,0,0.62)'); r.addColorStop(.55,'rgba(0,0,0,0.34)'); r.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=r; g.fillRect(0,0,w,h); });
+      var GY=-size*1.45;
+      function mkShadow(s){ var m=new T.Mesh(new T.PlaneGeometry(s,s), new T.MeshBasicMaterial({ map:shadowTex, transparent:true, depthWrite:false })); m.rotation.x=-Math.PI/2; m.position.y=GY; scene.add(m); return m; }
+      var planetShadow=mkShadow(size*2.6);
+      var moonAnims=P.moons.map(function(m,i){ var sh=mkShadow(1.15); sh.material.opacity=.8;
+        return { m:m, R:Math.hypot(m.position.x,m.position.z), a:Math.atan2(m.position.z,m.position.x), sp:.16+((i*37)%10)*.022+C.rnd(0,.05), tilt:.14+((i*53)%10)*.03, ph:C.rnd(0,6.28), sh:sh }; });
+
+      /* 枠の大きさに合わせる */
+      var W=0,H=0;
+      function fit(){ var w=frame.clientWidth, h=frame.clientHeight; if(!w||!h||(w===W&&h===H)) return; W=w; H=h; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+      fit(); addEventListener('resize',fit);
+
+      /* 画面の外・別タブ・裏に回ったときは止める。戻ったら再開 */
+      var inView=true, running=false, last=0, frameNo=0, t0=performance.now();
+      function loop(now){
+        if(!inView || document.hidden){ running=false; return; }
+        var dt=Math.min(.05,(now-last)/1000), t=(now-t0)/1000; last=now; frameNo++;
+        var bob=Math.sin(t*.55)*.34;
+        P.group.position.y=bob;
+        P.body.rotation.y+=P.spin*dt;
+        C.animateBody(P,t,dt,frameNo); /* 本編と同じ素材アニメーション */
+        /* 衛星は、それぞれ違う速さと傾きで、手前と奥を行き来しながら回る */
+        moonAnims.forEach(function(o){ o.a+=o.sp*dt; var x=Math.cos(o.a)*o.R, z=Math.sin(o.a)*o.R, y=Math.sin(o.a+o.ph)*o.R*o.tilt;
+          o.m.position.set(x,y,z); o.sh.position.x=x; o.sh.position.z=z; });
+        C.updateLinks(P);
+        /* 惑星が上がると影は小さく薄く、下がると濃く */
+        var lift=(bob/.34)*.5+.5;
+        planetShadow.scale.setScalar(1.12-lift*.24);
+        planetShadow.material.opacity=.95-lift*.3;
+        /* 少し上から見下ろす */
+        camera.position.set(0,size*1.45,size*4.6);
+        camera.lookAt(0,-size*.12,0);
+        renderer.render(scene,camera);
+        requestAnimationFrame(loop);
+      }
+      function start(){ if(running || !inView || document.hidden) return; running=true; fit(); last=performance.now(); requestAnimationFrame(loop); }
+      if('IntersectionObserver' in window) new IntersectionObserver(function(es){ inView=es[0].isIntersecting; start(); },{ threshold:.02 }).observe(frame);
+      document.addEventListener('visibilitychange',start);
+      addEventListener('pageshow',function(){ running=false; start(); }); /* 戻るボタンで戻ってきたときも動かし直す */
+      cv.addEventListener('webglcontextlost',function(e){ e.preventDefault(); running=false; });
+      start();
+    }
+
+    var go=GE_MODE==='iframe'?startIframe:startDirect;
+    if('IntersectionObserver' in window){ var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); go(); } },{ rootMargin:'200px' }); io.observe(a); } else go();
   })();
   </script>
 
