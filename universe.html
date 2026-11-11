@@ -2085,7 +2085,12 @@ if(ENTRANCE){ (function setupEntrance(){
     apply();
     [300,1000,2500].forEach(ms=>setTimeout(apply,ms));
     addEventListener('resize',queue);
-    try{ if(window.parent!==window){ window.parent.addEventListener('scroll',queue,{passive:true}); window.parent.addEventListener('resize',queue); } }catch(e){}
+    /* スクロール中は背景を追わせない(追従が遅れて柄が泳いで見えるため)。
+       止まったら一度だけ合わせ直す:スクロール中は箱ごと固まって動き、静止時に柄がつながる */
+    try{ if(window.parent!==window){ let settle=null;
+      window.parent.addEventListener('scroll',()=>{ if(settle) clearTimeout(settle); settle=setTimeout(apply,140); },{passive:true});
+      if('onscrollend' in window.parent) window.parent.addEventListener('scrollend',apply);
+      window.parent.addEventListener('resize',queue); } }catch(e){}
   })();
   entranceFrame=function(t,dt){
     if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
