@@ -2057,6 +2057,8 @@ if(ENTRANCE){ (function setupEntrance(){
   const moonAnims=P.moons.map((m,i)=>{ const sh=mkShadow(1.15); sh.material.opacity=.8;
     return { m, R:Math.hypot(m.position.x,m.position.z), a:Math.atan2(m.position.z,m.position.x), sp:.16+((i*37)%10)*.022+rnd(0,.05), tilt:.14+((i*53)%10)*.03, ph:rnd(0,6.28), sh }; });
   const keep=new Set([P.group, planetShadow]); moonAnims.forEach(o=>keep.add(o.sh));
+  /* 後から読み込み完了で表示に切り替わる天体(OBSERVERの板など)も、定期的に隠し直す */
+  setInterval(()=>{ scene.children.forEach(o=>{ if(!keep.has(o) && !o.isLight) o.visible=false; }); },400);
   let visible=true;
   if('IntersectionObserver' in window) new IntersectionObserver(es=>{ visible=es[0].isIntersecting; },{threshold:.02}).observe(renderer.domElement);
   /* 一時的な診断表示(?debug=1 のときだけ):透明にならない原因をページ自身に出す */
@@ -2066,7 +2068,7 @@ if(ENTRANCE){ (function setupEntrance(){
       const kids=[...document.body.children].map(el=>{ const r=el.getBoundingClientRect(), cs=getComputedStyle(el); return (el.tagName+'#'+(el.id||'')+'.'+(el.className&&el.className.baseVal!==undefined?'svg':el.className)).slice(0,34)+' disp='+cs.display+' vis='+cs.visibility+' bg='+cs.backgroundColor+' '+Math.round(r.width)+'x'+Math.round(r.height); }).join('\n');
       d.textContent='clearAlpha='+renderer.getClearAlpha()+' scene.background='+scene.background+'\nctx alpha='+at.alpha+' premultipliedAlpha='+at.premultipliedAlpha+'\ncanvases='+document.querySelectorAll('canvas').length+' centerEl='+(ep?(ep.tagName+'#'+(ep.id||'')+'.'+ep.className):'none')+'\nbody computed bg='+getComputedStyle(document.body).backgroundColor+'\n--- body children ---\n'+kids;
       document.documentElement.style.background='red'; document.body.style.background='red'; },2500);
-    setTimeout(()=>{ scene.background=new THREE.Color(0xff0000); renderer.setClearColor(0xff0000,1); d.textContent+='\n[scene.background set to RED]'; },5500); }
+    setTimeout(()=>{ d.textContent+='\n[visible at 8s] '+scene.children.filter(o=>o.visible).map(o=>{ const wp=new THREE.Vector3(); o.getWorldPosition(wp); return (o.type||'?')+'@'+wp.x.toFixed(0)+','+wp.y.toFixed(0)+','+wp.z.toFixed(0)+' s='+o.scale.x.toFixed(1); }).join(' | '); },8000); }
   if(window.parent!==window){ try{ window.parent.postMessage({ type:'galaxy-entrance', planet:P.data.name },'*'); }catch(e){} }
   entranceFrame=function(t,dt){
     if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
