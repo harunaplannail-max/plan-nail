@@ -269,14 +269,7 @@ if (LANG!=='ja' && LANG!=='en' && L10N[LANG]) (function(){ const P=L10N[LANG];
 
 /* ---------- 2. 3Dの準備 ---------- */
 const canvas = document.getElementById('c');
-/* 入口モード(?entrance=1):ホーム(index.html)に埋め込む表示専用モード。実装は末尾の setupEntrance */
-const ENTRANCE = new URLSearchParams(location.search).get('entrance')==='1';
-/* 入口モードでは、透明を確実に効かせるため WebGL コンテキストを自分で作って渡す。
-   antialias と premultipliedAlpha は切る:iOS Safari では MSAA/乗算済みアルファの合成で
-   透明ピクセルが黒に化けることがあるため(2026-11-11 実機で確認) */
-const renderer = ENTRANCE
-  ? new THREE.WebGLRenderer({ canvas, context: canvas.getContext('webgl',{ alpha:true, antialias:false, premultipliedAlpha:false }), alpha:true })
-  : new THREE.WebGLRenderer({ canvas, antialias:true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -1555,7 +1548,6 @@ function labelVisible(L){ const s=L.show;
   return false; }
 let last=performance.now(), frame=0;
 function tick(now){ const dt=Math.min(.05,(now-last)/1000), t=now/1000; last=now; frame++;
-  if(ENTRANCE){ if(entranceFrame(t,dt)) renderer.render(scene,camera); requestAnimationFrame(tick); return; }
   if(followObj) goal.target.copy(wpos(followObj));
   cam.target.lerp(goal.target,.07); cam.radius+=(goal.radius-cam.radius)*.07; cam.theta+=(goal.theta-cam.theta)*.12; cam.phi+=(goal.phi-cam.phi)*.12; applyCamera();
   { const k=Math.max(0,Math.min(1,(cam.radius-homeRadius())/(LIMIT_MAX_FN()-homeRadius()))); const fov=52+Math.pow(k,1.2)*34; // 引いていくほど広角に
@@ -1586,92 +1578,6 @@ function tick(now){ const dt=Math.min(.05,(now-last)/1000), t=now/1000; last=now
   zoomDot.style.top=(1-(cam.radius-LIMIT.min)/(LIMIT_MAX_FN()-LIMIT.min))*82+'px';
   requestAnimationFrame(tick); }
 addEventListener('resize',()=>{ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); if(mode==='universe') goal.radius=homeRadius(); });
-/* ---------- 入口モード(?entrance=1) ----------
-   ホーム(index.html)に iframe で埋め込む、表示専用の小さな宇宙。
-   惑星と月は本編と同じ TAXONOMY / MATERIALS / darkMoon で作られたものをそのまま使い、
-   ここでは「選んだ惑星だけを残し、透明な背景で浮かせる」ことだけをする。
-   本編の惑星や月を直せば、入口にも自動で同じものが出る。 */
-let entranceFrame=function(t,dt){ return false; };
-if(ENTRANCE){ (function setupEntrance(){
-  const st=document.createElement('style'); st.textContent='html,body{background:transparent!important}#c{background:transparent!important}.lbl{display:none!important}'; document.head.appendChild(st);
-  document.querySelectorAll('body > *:not(#c)').forEach(el=>{ el.style.display='none'; });
-  renderer.domElement.style.pointerEvents='none';
-  scene.fog=null;
-  renderer.setClearColor(0x000000,0); /* 背景は完全に透明に(ホームの地の上に直接浮かせる) */
-  /* 入口用の柔らかい環境:硬い帯のない、なめらかなグラデーションだけを映す(METALLICの黒い帯のような映り込み対策) */
-  (function softEnv(){ const tx=canvasTex(512,256,(g,w,h)=>{ const lg=g.createLinearGradient(0,0,0,h); lg.addColorStop(0,'#57506e'); lg.addColorStop(.48,'#efeaf6'); lg.addColorStop(.56,'#d9d2e6'); lg.addColorStop(1,'#3a3650'); g.fillStyle=lg; g.fillRect(0,0,w,h); });
-    tx.mapping=THREE.EquirectangularReflectionMapping; const pm=new THREE.PMREMGenerator(renderer); scene.environment=pm.fromEquirectangular(tx).texture; tx.dispose(); pm.dispose(); })();
-  const want=(new URLSearchParams(location.search).get('planet')||'').toLowerCase();
-  const ids=TAXONOMY.categories.map(c=>c.id);
-  const pid=ids.indexOf(want)>=0?want:ids[Math.floor(Math.random()*ids.length)];
-  const P=planets[pid], size=P.data.size;
-  /* 選んだ惑星以外は全部隠す(光源は残す) */
-  scene.children.slice().forEach(o=>{ if(o!==P.group && !o.isLight) o.visible=false; });
-  P.group.position.set(0,0,0); P.moonG.rotation.y=0;
-  /* 影:惑星の真下に落ちる、濃く柔らかい楕円。衛星にも、それぞれ小さな影 */
-  const shadowTex=canvasTex(256,256,(g,w,h)=>{ const r=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); r.addColorStop(0,'rgba(0,0,0,0.62)'); r.addColorStop(.55,'rgba(0,0,0,0.34)'); r.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=r; g.fillRect(0,0,w,h); });
-  const GY=-size*1.45;
-  const mkShadow=s=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s), new THREE.MeshBasicMaterial({ map:shadowTex, transparent:true, depthWrite:false })); m.rotation.x=-Math.PI/2; m.position.y=GY; scene.add(m); return m; };
-  const planetShadow=mkShadow(size*2.6);
-  const moonAnims=P.moons.map((m,i)=>{ const sh=mkShadow(1.15); sh.material.opacity=.8;
-    return { m, R:Math.hypot(m.position.x,m.position.z), a:Math.atan2(m.position.z,m.position.x), sp:.16+((i*37)%10)*.022+rnd(0,.05), tilt:.14+((i*53)%10)*.03, ph:rnd(0,6.28), sh }; });
-  const keep=new Set([P.group, planetShadow]); moonAnims.forEach(o=>keep.add(o.sh));
-  /* 後から読み込み完了で表示に切り替わる天体(OBSERVERの板など)も、定期的に隠し直す */
-  setInterval(()=>{ scene.children.forEach(o=>{ if(!keep.has(o) && !o.isLight) o.visible=false; }); },400);
-  let visible=true;
-  if('IntersectionObserver' in window) new IntersectionObserver(es=>{ visible=es[0].isIntersecting; },{threshold:.02}).observe(renderer.domElement);
-  if(window.parent!==window){ try{ window.parent.postMessage({ type:'galaxy-entrance', planet:P.data.name },'*'); }catch(e){} }
-  /* 背景は親ページの固定背景(#fixedBg:石の画像+暗い膜)と絵合わせする。
-     同じ画像を親ビューポート基準の大きさでこのページにも敷き、iframeの表示位置ぶんずらす。
-     透明なWebGLピクセルの下にこのDOM背景がそのまま見えるため、境界が消えて直接浮いて見える。
-     (iframe越しの透明合成は端末によって黒に化けるため、最初からこの方式にする) */
-  (function entranceBg(){
-    const GRAD='linear-gradient(rgba(16,16,19,.68), rgba(16,16,19,.68))', IMG="url('assets/images/booking-bg.jpg')", IW=900, IH=1200;
-    let queued=false;
-    function apply(){ queued=false;
-      let pw=innerWidth, ph=innerHeight, rx=0, ry=0;
-      try{ if(window.parent!==window && window.frameElement){ pw=window.parent.innerWidth; ph=window.parent.innerHeight; const r=window.frameElement.getBoundingClientRect(); rx=r.left; ry=r.top; } }catch(e){}
-      const s=Math.max(pw/IW, ph/IH), W=IW*s, H=IH*s, bx=(pw-W)/2-rx, by=(ph-H)/2-ry, st=document.body.style;
-      st.setProperty('background-image', GRAD+', '+IMG, 'important');
-      st.setProperty('background-position', bx+'px '+by+'px', 'important');
-      st.setProperty('background-size', W+'px '+H+'px', 'important');
-      st.setProperty('background-repeat', 'no-repeat', 'important');
-      st.setProperty('background-color', '#141417', 'important');
-    }
-    function queue(){ if(!queued){ queued=true; requestAnimationFrame(apply); } }
-    apply();
-    [300,1000,2500].forEach(ms=>setTimeout(apply,ms));
-    addEventListener('resize',queue);
-    /* スクロール追従は visualViewport のスクロールで取る(通常のscrollイベントは端末側で遅れて柄が泳ぐため)。
-       止まったら一度だけ合わせ直す保険も残す */
-    try{ if(window.parent!==window){ let settle=null;
-      window.parent.addEventListener('scroll',()=>{ if(settle) clearTimeout(settle); settle=setTimeout(apply,140); },{passive:true});
-      if('onscrollend' in window.parent) window.parent.addEventListener('scrollend',apply);
-      window.parent.addEventListener('resize',queue);
-      const vv=window.parent.visualViewport;
-      if(vv){ vv.addEventListener('scroll',queue); vv.addEventListener('resize',queue); } } }catch(e){}
-  })();
-  entranceFrame=function(t,dt){
-    if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
-    if(frame%50===0) scene.children.forEach(o=>{ if(!keep.has(o) && !o.isLight) o.visible=false; }); /* 後から足された天体(モチーフライン等)も隠す */
-    const bob=Math.sin(t*.55)*.34;
-    P.group.position.y=bob;
-    P.body.rotation.y+=P.spin*dt;
-    /* 本編と同じ素材アニメーション(液体・ホロ・煙・輝き・空気)を、この惑星だけ進める */
-    animateBody(P,t,dt,frame);
-    /* 衛星は、それぞれ違う速さと傾きで、手前と奥を行き来しながら回る */
-    moonAnims.forEach(o=>{ o.a+=o.sp*dt; const x=Math.cos(o.a)*o.R, z=Math.sin(o.a)*o.R, y=Math.sin(o.a+o.ph)*o.R*o.tilt;
-      o.m.position.set(x,y,z); o.sh.position.x=x; o.sh.position.z=z; });
-    /* 惑星が上がると影は小さく薄く、下がると濃くなる */
-    const lift=(bob/.34)*.5+.5;
-    planetShadow.scale.setScalar(1.12-lift*.24);
-    planetShadow.material.opacity=.95-lift*.3;
-    /* カメラは少し上から見下ろす */
-    camera.position.set(0,size*1.45,size*4.6);
-    camera.lookAt(0,-size*.12,0);
-    return true;
-  };
-})(); }
 requestAnimationFrame(t=>{ document.getElementById('load').style.opacity=0; setTimeout(()=>document.getElementById('load').remove(),900); last=t; tick(t); });
 setTimeout(hideHint,9000);
 if(!SHOW_MUSIC) document.getElementById('closing').style.display='none'; // 一文は今は出さない

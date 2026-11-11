@@ -178,7 +178,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 /* 銀河ジャンルマップへの入り口。惑星がホームの上に直接浮かぶ、枠なしの透明な窓 */
 .galaxy-entry{display:block;margin:10px 4px 22px;text-decoration:none;text-align:center;-webkit-tap-highlight-color:transparent;}
 .galaxy-entry .ge-frame{display:block;height:300px;}
-.galaxy-entry .ge-iframe{display:block;width:100%;height:100%;border:0;background:transparent;pointer-events:none;}
 .galaxy-entry .ge-canvas{display:block;width:100%;height:100%;pointer-events:none;}
 .galaxy-entry.ge-off .ge-frame{display:none;} /* 3Dが使えない端末では、文字だけの入口にする */
 .galaxy-entry .ge-name{display:block;font-family:'Special Elite','Kosugi',sans-serif;color:#fff;font-size:1.02rem;letter-spacing:.34em;padding-left:.34em;}
@@ -1282,15 +1281,12 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
   /* 入口の惑星:GALAXY 本編と同じ惑星と月を、このページの中に直接描く。
      作り方は galaxy-core.js(本編 universe.html と共用)。本編の惑星や月を直せば、ここにも同じものが出る。
      背景は透明にして、ホームの固定背景(#fixedBg)の上にそのまま浮かせる(スクロールしても背景がずれない)。
-     画面に入ってきたときに初めて three.js と galaxy-core.js を読み込む。
-     GE_MODE を 'iframe' にすると、以前の iframe 方式(universe.html?entrance=1)に戻せる。 */
+     画面に入ってきたときに初めて three.js と galaxy-core.js を読み込む。 */
   (function(){
-    var GE_MODE='direct';
     var a=document.querySelector('.galaxy-entry'); if(!a) return; var frame=a.querySelector('.ge-frame'); if(!frame) return;
     function off(){ a.classList.add('ge-off'); }
     function loadScript(src){ return new Promise(function(ok,ng){ var s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=ng; document.head.appendChild(s); }); }
 
-    function startIframe(){ var f=document.createElement('iframe'); f.className='ge-iframe'; f.title='GALAXY OF NAIL'; f.tabIndex=-1; f.setAttribute('scrolling','no'); f.src='./universe.html?entrance=1'; frame.appendChild(f); }
 
     function startDirect(){
       var need=[];
@@ -1370,8 +1366,7 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
       start();
     }
 
-    var go=GE_MODE==='iframe'?startIframe:startDirect;
-    if('IntersectionObserver' in window){ var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); go(); } },{ rootMargin:'200px' }); io.observe(a); } else go();
+    if('IntersectionObserver' in window){ var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ io.disconnect(); startDirect(); } },{ rootMargin:'200px' }); io.observe(a); } else startDirect();
   })();
   </script>
 
