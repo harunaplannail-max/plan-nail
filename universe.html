@@ -369,9 +369,11 @@ if (LANG!=='ja' && LANG!=='en' && L10N[LANG]) (function(){ const P=L10N[LANG];
 const canvas = document.getElementById('c');
 /* 入口モード(?entrance=1):ホーム(index.html)に埋め込む表示専用モード。実装は末尾の setupEntrance */
 const ENTRANCE = new URLSearchParams(location.search).get('entrance')==='1';
-/* 入口モードでは、透明を確実に効かせるため WebGL コンテキストを自分で作って渡す */
+/* 入口モードでは、透明を確実に効かせるため WebGL コンテキストを自分で作って渡す。
+   antialias と premultipliedAlpha は切る:iOS Safari では MSAA/乗算済みアルファの合成で
+   透明ピクセルが黒に化けることがあるため(2026-11-11 実機で確認) */
 const renderer = ENTRANCE
-  ? new THREE.WebGLRenderer({ canvas, context: canvas.getContext('webgl',{ alpha:true, antialias:true }), alpha:true })
+  ? new THREE.WebGLRenderer({ canvas, context: canvas.getContext('webgl',{ alpha:true, antialias:false, premultipliedAlpha:false }), alpha:true })
   : new THREE.WebGLRenderer({ canvas, antialias:true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
