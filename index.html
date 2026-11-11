@@ -180,7 +180,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .galaxy-entry .ge-frame{display:block;height:300px;}
 .galaxy-entry .ge-iframe{display:block;width:100%;height:100%;border:0;background:transparent;pointer-events:none;}
 .galaxy-entry .ge-name{display:block;font-family:'Special Elite','Kosugi',sans-serif;color:#fff;font-size:1.02rem;letter-spacing:.34em;padding-left:.34em;}
-.galaxy-entry .ge-planet{display:block;min-height:1em;font-size:.6rem;letter-spacing:.3em;padding-left:.3em;color:rgba(255,255,255,.45);margin-top:5px;}
 /* ボタンの右の矢印(›)は外す。ボタン全体がガラスで押せる形なので、矢印がなくても伝わる */
 .lam-go{display:none !important;}
 
@@ -1276,14 +1275,12 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
   <a class="galaxy-entry" href="./universe.html" aria-label="GALAXY OF NAIL">
     <span class="ge-frame"><iframe class="ge-iframe" data-src="./universe.html?entrance=1" title="GALAXY OF NAIL" tabindex="-1" scrolling="no"></iframe></span>
     <span class="ge-name">GALAXY OF NAIL</span>
-    <span class="ge-planet" id="gePlanet"></span>
   </a>
   <script>
-  /* 入口の惑星は、画面に入ってきたときに初めて読み込む。表示中の惑星名は iframe からの通知で出す */
+  /* 入口の惑星は、画面に入ってきたときに初めて読み込む */
   (function(){ var a=document.querySelector('.galaxy-entry'); if(!a) return; var f=a.querySelector('.ge-iframe'); if(!f) return;
     function load(){ if(!f.getAttribute('src')) f.setAttribute('src', f.getAttribute('data-src')); }
     if('IntersectionObserver' in window){ var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ load(); io.disconnect(); } },{ rootMargin:'120px' }); io.observe(a); } else load();
-    window.addEventListener('message', function(e){ if(e.data && e.data.type==='galaxy-entrance' && e.data.planet){ var p=document.getElementById('gePlanet'); if(p) p.textContent=e.data.planet; } });
   })();
   </script>
 

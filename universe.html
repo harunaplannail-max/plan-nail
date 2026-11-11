@@ -2053,9 +2053,9 @@ if(ENTRANCE){ (function setupEntrance(){
   P.group.position.set(0,0,0); P.moonG.rotation.y=0;
   /* 影:惑星の真下に落ちる、濃く柔らかい楕円。衛星にも、それぞれ小さな影 */
   const shadowTex=canvasTex(256,256,(g,w,h)=>{ const r=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); r.addColorStop(0,'rgba(0,0,0,0.62)'); r.addColorStop(.55,'rgba(0,0,0,0.34)'); r.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=r; g.fillRect(0,0,w,h); });
-  const GY=-size*1.85;
+  const GY=-size*1.45;
   const mkShadow=s=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s), new THREE.MeshBasicMaterial({ map:shadowTex, transparent:true, depthWrite:false })); m.rotation.x=-Math.PI/2; m.position.y=GY; scene.add(m); return m; };
-  const planetShadow=mkShadow(size*3.4);
+  const planetShadow=mkShadow(size*2.6);
   const moonAnims=P.moons.map((m,i)=>{ const sh=mkShadow(1.15); sh.material.opacity=.8;
     return { m, R:Math.hypot(m.position.x,m.position.z), a:Math.atan2(m.position.z,m.position.x), sp:.16+((i*37)%10)*.022+rnd(0,.05), tilt:.14+((i*53)%10)*.03, ph:rnd(0,6.28), sh }; });
   const keep=new Set([P.group, planetShadow]); moonAnims.forEach(o=>keep.add(o.sh));
@@ -2109,7 +2109,7 @@ if(ENTRANCE){ (function setupEntrance(){
     planetShadow.scale.setScalar(1.12-lift*.24);
     planetShadow.material.opacity=.95-lift*.3;
     /* カメラは少し上から見下ろす */
-    camera.position.set(0,size*1.45,size*4.1);
+    camera.position.set(0,size*1.45,size*4.6);
     camera.lookAt(0,-size*.12,0);
     return true;
   };
