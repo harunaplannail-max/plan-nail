@@ -961,6 +961,7 @@ function artworksFor(kind, key){
   if(kind==='trend'){ // トレンドの作品:トレンドタグに加えて、同じ意味のサブジャンル名も拾う(例:Mint Core ← サブジャンル「Mint」)
     const alias=(TREND_ALIASES[key]||[]).map(norm).concat([norm(key)]);
     return ARTWORKS.filter(a=>a.trends.some(s=>alias.includes(norm(s))) || a.subgenres.some(s=>alias.includes(norm(s)))); }
+  if(kind==='alien') return ARTWORKS.filter(a=>a.subgenres.some(s=>norm(s)==='alien')); // Alienジャンル:UFOとHOME OF UFOの星雲に表示する
   return []; }
 
 // ギャラリー:ガラスのパネルが奥行きをもって並び、横スワイプで見る
@@ -1089,6 +1090,7 @@ function openVisitor(){ enterDetail(); followObj=null; goal.target.copy(wpos(VIS
   openSheet(`<small>CONSTELLATION · ${tr('UFOのふるさと','HOME OF UFO')}</small><h2>HOME OF UFO</h2><div class="jp">${tr('UFOがやって来る星座と、剣の星雲','The constellation the UFO comes from, and its sword nebula')}</div>
     <p>${tr('オリオン座のような姿の星座。剣のあたりに、ピンクと紫の星雲が浮かんでいます。ときどき現れるUFOは、この星雲からやって来て、またここへ帰っていきます。','A constellation shaped like Orion. A pink and violet nebula floats near its sword. The UFO that appears now and then comes from this nebula, and returns to it.')}</p>
     <p>${tr('分類のどこにも収まりきらない、未確認のネイル。可愛く宇宙的ならMETALLICへ、不気味に歪めばDARKへ。','Unidentified nails that fit nowhere in the classification. Cute and cosmic leads to METALLIC; uncanny and distorted leads to DARK.')}</p>
+    <h3>ARTWORKS</h3><div class="chips">${chip(tr('Alienの作品を見る（','See Alien artworks (')+artworksFor('alien','Alien').length+tr('）',')'),'gal:alien:Alien',true)}</div>
     <h3>RELATED MOTIF</h3><div class="chips">${chip('CREATURES — Alien','asteroid:creatures',true)}</div>
     <h3>CLASSIFICATION</h3><div class="chips">${chip('METALLIC','planet:metallic',true)}${chip('DARK','planet:dark',true)}</div>`); }
 
@@ -1128,7 +1130,8 @@ function updateUFO(t,dt){
 function openUFO(obj){ enterDetail(); ufo.state='held'; ufo.t=0; ufo.holdPos=ufo.g.position.clone(); followObj=ufo.g; goal.radius=7; setSelected(obj,2.2); linkGroup.clear(); highlightConstellations(['metallic','dark']);
   openSheet(`<small>UFO · ${tr('未確認飛行物体','UNIDENTIFIED FLYING OBJECT')}</small><h2>UFO</h2><div class="jp">${tr('未確認のネイル','Unidentified nails')}</div>
     <p style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px">“Something unknown has entered the universe.”</p>
-    <h3>RELATED MOTIF</h3><div class="chips"><button>ALIEN</button></div>
+    <h3>ARTWORKS</h3><div class="chips">${chip(tr('Alienの作品を見る（','See Alien artworks (')+artworksFor('alien','Alien').length+tr('）',')'),'gal:alien:Alien',true)}</div>
+    <h3>RELATED MOTIF</h3><div class="chips">${chip('ALIEN','gal:alien:Alien',true)}</div>
     <h3>CLASSIFICATION</h3><div class="chips">${chip(tr('METALLIC — 可愛い・宇宙的','METALLIC — cute & cosmic'),'planet:metallic',true)}${chip(tr('DARK — 不気味・歪み','DARK — uncanny & distorted'),'planet:dark',true)}</div>
     <h3>HOME</h3><div class="chips">${chip(tr('UFOのふるさとへ →','HOME OF UFO →'),'visitor:',true)}${chip('EXPLORE ALIEN MOTIF →','asteroid:creatures',true)}</div>`); }
 
