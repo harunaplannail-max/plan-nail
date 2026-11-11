@@ -2066,7 +2066,7 @@ if(ENTRANCE){ (function setupEntrance(){
       const kids=[...document.body.children].map(el=>{ const r=el.getBoundingClientRect(), cs=getComputedStyle(el); return (el.tagName+'#'+(el.id||'')+'.'+(el.className&&el.className.baseVal!==undefined?'svg':el.className)).slice(0,34)+' disp='+cs.display+' vis='+cs.visibility+' bg='+cs.backgroundColor+' '+Math.round(r.width)+'x'+Math.round(r.height); }).join('\n');
       d.textContent='clearAlpha='+renderer.getClearAlpha()+' scene.background='+scene.background+'\nctx alpha='+at.alpha+' premultipliedAlpha='+at.premultipliedAlpha+'\ncanvases='+document.querySelectorAll('canvas').length+' centerEl='+(ep?(ep.tagName+'#'+(ep.id||'')+'.'+ep.className):'none')+'\nbody computed bg='+getComputedStyle(document.body).backgroundColor+'\n--- body children ---\n'+kids;
       document.documentElement.style.background='red'; document.body.style.background='red'; },2500);
-    setTimeout(()=>{ const r=document.createElement('div'); r.id='dbgred'; r.style.cssText='position:fixed;inset:0;background:red;z-index:2147483647;pointer-events:none'; document.body.appendChild(r); d.textContent+='\n[red overlay added] body bg now='+getComputedStyle(document.body).backgroundColor; },5500); }
+    setTimeout(()=>{ scene.background=new THREE.Color(0xff0000); renderer.setClearColor(0xff0000,1); d.textContent+='\n[scene.background set to RED]'; },5500); }
   if(window.parent!==window){ try{ window.parent.postMessage({ type:'galaxy-entrance', planet:P.data.name },'*'); }catch(e){} }
   entranceFrame=function(t,dt){
     if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
