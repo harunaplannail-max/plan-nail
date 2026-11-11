@@ -1358,9 +1358,11 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
 
   <!-- 横スクロールを最上部に置く。見出しは削除し、
        ネイルチップが並ぶことでセクションの内容が一目で伝わるようにしている -->
-  <div class="trends-scatter" id="trends-scatter"></div>
+  <!-- トレンドのカード並びも一旦非表示（2026-11-11 Haruna指示・スクショの緑枠範囲。戻すときはこの div の style を外す） -->
+  <div class="trends-scatter" id="trends-scatter" style="display:none"></div>
 
-  <div class="mood-map-wrap">
+  <!-- トレンドグラフ(ムードマップ)は一旦非表示（2026-11-11 Haruna指示。戻すときはこの div の style を外す） -->
+  <div class="mood-map-wrap" style="display:none">
     <span class="mood-map-label mood-map-top">POP</span>
     <span class="mood-map-label mood-map-bottom">DARK</span>
     <span class="mood-map-label mood-map-left">SIMPLE</span>
