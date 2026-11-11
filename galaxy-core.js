@@ -86,8 +86,8 @@ const TAXONOMY = {
   beliefs: [
     { id:'punk', name:'PUNK SPIRIT', aliases:['Punk','Punk Spirit','パンク'], tags:'ANTI-WAR / ANTI-ESTABLISHMENT / DIY', pos:[-27,-16,14], size:20, seed:2.3, pulse:1.7, // DARKよりさらに左下、手前側(最初の画面からは外れる)
       colors:{ outer:'#9c0f1f', mid:'#6b2a9e', inner:'#5a8cff' },
-      quote:'An expression of resistance, freedom, and individuality.', descEn:'Anti-war, anti-establishment, DIY. Its look may live on DARK, but this is the attitude and belief behind it. An anarchy mark faintly emerges from the shimmering nebula, and the light it sometimes releases reaches every planet.',
-      desc:'反戦、反体制、DIY。見た目の居場所はDARKでも、その奥にある態度と思想。ゆらめく星雲の中に、アナーキーマークがかすかに浮かぶ。ときどき放たれる光は、どの惑星にも届く。' },
+      quote:'An expression of resistance, freedom, and individuality.', descEn:'A rebellious spirit and anti-authoritarianism. Questioning what is called “common sense”, and refusing to obey authority blindly. Not having things made for you, but making your own culture yourself — DIY. Its look may live on DARK, but what lies behind it is the belief itself. An anarchy mark faintly emerges from the shimmering nebula, and the light it sometimes releases reaches every planet.',
+      desc:'反骨精神と反権威主義。「常識」と呼ばれるものに疑問を持ち、権威に盲従しない。誰かに作ってもらうのではなく、自分の文化を自分で作る——DIY。見た目の居場所はDARKでも、その奥にあるのは思想そのもの。ゆらめく星雲の中に、アナーキーマークがかすかに浮かぶ。ときどき放たれる光は、どの惑星にも届く。' },
   ],
   // 星座=ジャンル同士の関係
   relationships: [
