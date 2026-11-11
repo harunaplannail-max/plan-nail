@@ -2094,6 +2094,11 @@ if(ENTRANCE){ (function setupEntrance(){
       const vv=window.parent.visualViewport;
       if(vv){ vv.addEventListener('scroll',queue); vv.addEventListener('resize',queue); } } }catch(e){}
   })();
+  /* 入口の縁を柔らかく落とす影(ビネット):背景の柄合わせがスクロールの瞬間にずれても、
+     継ぎ目が暗がりに沈んで目立たなくなる。惑星の周りがほんのりスポットライト状になる */
+  const vg=document.createElement('div');
+  vg.style.cssText='position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 74% at 50% 46%, rgba(0,0,0,0) 52%, rgba(8,8,10,.36) 82%, rgba(8,8,10,.60) 100%)';
+  document.body.appendChild(vg);
   entranceFrame=function(t,dt){
     if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
     if(frame%50===0) scene.children.forEach(o=>{ if(!keep.has(o) && !o.isLight) o.visible=false; }); /* 後から足された天体(モチーフライン等)も隠す */
