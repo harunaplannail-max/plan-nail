@@ -2031,10 +2031,11 @@ addEventListener('resize',()=>{ renderer.setSize(innerWidth,innerHeight); camera
    本編の惑星や月を直せば、入口にも自動で同じものが出る。 */
 let entranceFrame=function(t,dt){ return false; };
 if(ENTRANCE){ (function setupEntrance(){
-  const st=document.createElement('style'); st.textContent='html,body{background:transparent!important}.lbl{display:none!important}'; document.head.appendChild(st);
+  const st=document.createElement('style'); st.textContent='html,body{background:transparent!important}#c{background:transparent!important}.lbl{display:none!important}'; document.head.appendChild(st);
   document.querySelectorAll('body > *:not(#c)').forEach(el=>{ el.style.display='none'; });
   renderer.domElement.style.pointerEvents='none';
   scene.fog=null;
+  renderer.setClearColor(0x000000,0); /* 背景は完全に透明に(ホームの地の上に直接浮かせる) */
   /* 入口用の柔らかい環境:硬い帯のない、なめらかなグラデーションだけを映す(METALLICの黒い帯のような映り込み対策) */
   (function softEnv(){ const tx=canvasTex(512,256,(g,w,h)=>{ const lg=g.createLinearGradient(0,0,0,h); lg.addColorStop(0,'#57506e'); lg.addColorStop(.48,'#efeaf6'); lg.addColorStop(.56,'#d9d2e6'); lg.addColorStop(1,'#3a3650'); g.fillStyle=lg; g.fillRect(0,0,w,h); });
     tx.mapping=THREE.EquirectangularReflectionMapping; const pm=new THREE.PMREMGenerator(renderer); scene.environment=pm.fromEquirectangular(tx).texture; tx.dispose(); pm.dispose(); })();
@@ -2055,6 +2056,10 @@ if(ENTRANCE){ (function setupEntrance(){
   const keep=new Set([P.group, planetShadow]); moonAnims.forEach(o=>keep.add(o.sh));
   let visible=true;
   if('IntersectionObserver' in window) new IntersectionObserver(es=>{ visible=es[0].isIntersecting; },{threshold:.02}).observe(renderer.domElement);
+  /* 一時的な診断表示(?debug=1 のときだけ):透明にならない原因をページ自身に出す */
+  if(new URLSearchParams(location.search).get('debug')==='1'){ const d=document.createElement('div'); d.style.cssText='position:fixed;left:4px;top:4px;z-index:99;background:#fff;color:#000;font:11px monospace;padding:6px;white-space:pre'; document.body.appendChild(d);
+    setTimeout(()=>{ d.textContent='clearAlpha='+renderer.getClearAlpha()+' clearColor=#'+renderer.getClearColor().getHexString()+'\nscene.background='+scene.background+'\nbody bg='+getComputedStyle(document.body).backgroundColor+'\nhtml bg='+getComputedStyle(document.documentElement).backgroundColor+'\ncanvas bg='+getComputedStyle(renderer.domElement).backgroundColor;
+      document.documentElement.style.background='red'; document.body.style.background='red'; },2500); }
   if(window.parent!==window){ try{ window.parent.postMessage({ type:'galaxy-entrance', planet:P.data.name },'*'); }catch(e){} }
   entranceFrame=function(t,dt){
     if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
