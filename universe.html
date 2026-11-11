@@ -234,8 +234,8 @@ const TAXONOMY = {
     ['romantic',['Sheer','Pearl','Rose','Classic Romantic',{name:'Y2K Girlhood',children:['Fairy','Wishcore','Coconut Girl','Angelcore','Pink Glamour','Unicorn']}]],
     ['metallic',['Magnet','Chrome','Clear','Star Galaxy','Aurora','Bubble']],
     ['dark',['Gothic',{name:'Grunge',children:['Foggy','Smoke','Ink Art','Nuance Art']},{name:'Mystic',children:['Tarot','Astrology']},
-             {name:'Cyber',children:['Cybersigilism','Cyber Tribal']},{name:'Street',children:['Graffiti','Hardcore']},{name:'Extreme',children:['Super-realistic']},'Piercing']],  // パンクは月ではなく、思想のパルサー PUNK SPIRIT へ
-    ['natural',['Nude','Beige','Milk','Clean Girl',{name:'Quiet Luxury',children:[]}]],
+             {name:'Cyber',children:['Cybersigilism','Cyber Tribal']},'Neo Tribal',{name:'Street',children:['Graffiti','Hardcore']},{name:'Extreme',children:['Super-realistic']},'Piercing']],  // パンクは月ではなく、思想のパルサー PUNK SPIRIT へ。Neo TribalはCyberの隣の独立した月(2026-11-11追加)
+    ['natural',['Nude','Beige','Milk','Clean Girl',{name:'Quiet Luxury',children:[]},'French']],  // FrenchはNATURALの月(2026-11-11追加)
     ['revival',['Y2K','Mcbling','Y3K','2010s Swag',{name:'Kidcore',children:['Beads','Candy','Primary Colors','Miniature Food']}]],
   ],
   motifs: [
@@ -248,6 +248,8 @@ const TAXONOMY = {
       related:[{to:'romantic',note:'Rose：ロマンティックな解釈 → ROMANTIC'},{to:'dark',note:'Rose・Orchid：暗い植物の解釈 → DARK'}] },
     { id:'flame', type:'asteroid', name:'FLAME', jp:'炎', items:['Fire Flame','Hot Rod','Punk Rock'],
       related:[{to:'revival',note:'レトロ・ホットロッド → REVIVAL'},{to:'dark',note:'暗いグラフィティの炎 → DARK / Street'}] },
+    { id:'fungi', type:'asteroid', name:'FUNGI', jp:'菌', items:['Mushroom','Spore','Mycelium','Fungi','Psychedelic'], related:[] },  // 菌の帯(2026-11-11追加)。帯だけでは惑星を決めない
+    { id:'fabric', type:'asteroid', name:'FABRIC', jp:'布・裁縫', items:['Button','Thread','Embroidery','Knit','Denim','Sewing','Ribbon','Lace'], related:[] },  // 布の帯(2026-11-11追加)。Button・Ribbon・LaceはDECORATIONと重なってOK
   ],
   textures: [
     { id:'glaze', type:'nebula', name:'GLAZE', jp:'グレーズ', color:['#f4e4d6','#fff6ee'], pos:[4,6,-8], related:['natural'], items:['Skin-like Shine','Creamy Gloss','Natural Translucency'],
@@ -326,7 +328,7 @@ if (EN) (function(){
     natural:['Skin Tone · Timeless','Nude, beige, milk. A perfection that looks effortless — in the spirit of quiet luxury.'],
     revival:['Reinterpreting Eras','Y2K, punk and Heisei-era nostalgia. Redrawing past eras with today’s sensibility.'] };
   TAXONOMY.categories.forEach(c=>{ if(C[c.id]){ c.jp=C[c.id][0]; c.desc=C[c.id][1]; } });
-  const M={ patterns:'Pattern motifs', ethnic:'Ethnic patterns', decoration:'Decorative elements', creatures:'Creatures & characters', flowers:'Flowers', flame:'Flames' };
+  const M={ patterns:'Pattern motifs', ethnic:'Ethnic patterns', decoration:'Decorative elements', creatures:'Creatures & characters', flowers:'Flowers', flame:'Flames', fungi:'Fungi / mushroom motifs', fabric:'Fabric & sewing motifs' };
   const MN={ creatures:['Alien: cute & cosmic → METALLIC','Alien: uncanny & distorted → DARK'], flowers:['Rose: romantic interpretation → ROMANTIC','Rose / Orchid: dark botanical interpretation → DARK'], flame:['Retro / hot rod → REVIVAL','Dark graffiti flames → DARK / Street'] };
   TAXONOMY.motifs.forEach(m=>{ m.jp=M[m.id]||''; if(MN[m.id]) m.related.forEach((r,i)=>r.note=MN[m.id][i]||r.note); });
   const T={ glaze:['Glaze','Born from the clean-girl look. A soft, creamy, skin-like shine.'],
@@ -802,6 +804,14 @@ TAXONOMY.categories.forEach(P=>{
   addLabel(P.name,hit,'planet','always');
   planets[P.id]={group:g,body,hit,moonG,moons,data:P,spin:rnd(.04,.08)};
 });
+// Neo Tribal の月と Cyber の月を、うっすらした細いラインでつなぐ(同じ moonG の子なので、一緒に公転する)
+(function(){ const d=planets.dark; if(!d) return; const names=d.moons.map(m=>m.userData.name);
+  const ci=names.indexOf('Cyber'), ni=names.indexOf('Neo Tribal'); if(ci<0||ni<0) return;
+  const a=d.moons[ci].position, b=d.moons[ni].position;
+  const mid=a.clone().lerp(b,.5); mid.y+=.22; // ほんの少しだけ膨らませて、直線に見えすぎないように
+  const curve=new THREE.QuadraticBezierCurve3(a.clone(), mid, b.clone());
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(24)), new THREE.LineBasicMaterial({ color:0xa8c8e0, transparent:true, opacity:.22 }));
+  d.moonG.add(line); })();
 // 公転の軌道
 function ellipse(rx,rz,y,tilt,op){ const pts=[]; for(let i=0;i<=180;i++){ const t=i/180*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(t)*rx,y+Math.sin(t)*tilt,Math.sin(t)*rz)); } return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color:0xd9c6e8, transparent:true, opacity:op })); }
 scene.add(ellipse(11.5,7,0,1.2,.14)); scene.add(ellipse(15.5,10,-.5,2.2,.08));
@@ -1080,6 +1090,37 @@ function makeMotif(M){
     const T=(c,s)=>{ const t=new THREE.CanvasTexture(c); if(s) t.encoding=THREE.sRGBEncoding; t.anisotropy=4; return t; };
     const root=new THREE.Mesh(new THREE.SphereGeometry(.6,64,48), new THREE.MeshStandardMaterial({ map:T(col,true), bumpMap:T(pat,false), bumpScale:-1.6, roughnessMap:T(rough,false), metalnessMap:T(rough,false), roughness:1, metalness:1, envMapIntensity:1.1 }));
     root.userData.spin=new THREE.Vector3(0,.12,0); return root; }
+  if(M.id==='fungi'){ // 菌の小惑星:アシッドグリーンの岩に、小さなキノコと胞子の粒。サイケデリックな緑で光る
+    const root=new THREE.Mesh(new THREE.SphereGeometry(.75,10,8), new THREE.MeshBasicMaterial({ visible:false }));
+    const rock=new THREE.Mesh(displace(new THREE.IcosahedronGeometry(.58,2),.24,2.6), new THREE.MeshStandardMaterial({ color:0x69c92e, roughness:.8, metalness:.05, flatShading:true, emissive:0x2e7a10, emissiveIntensity:.55 }));
+    root.add(rock);
+    const capMat=new THREE.MeshStandardMaterial({ color:0xb8ff5e, roughness:.5, metalness:0, emissive:0x4d9c1e, emissiveIntensity:.7, flatShading:true });
+    const stemMat=new THREE.MeshStandardMaterial({ color:0xe8f5c8, roughness:.9, metalness:0 });
+    for(let k=0;k<4;k++){ const g=new THREE.Group(); const sc=rnd(.5,.95);
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05*sc,.075*sc,.3*sc,8), stemMat); stem.position.y=.13*sc; g.add(stem);
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(.17*sc,12,8,0,Math.PI*2,0,Math.PI/2), capMat); cap.position.y=.26*sc; g.add(cap);
+      const a=rnd(0,Math.PI*2), e=rnd(.15,1.1), R=.52;
+      g.position.set(Math.cos(a)*Math.cos(e)*R, Math.sin(e)*R, Math.sin(a)*Math.cos(e)*R);
+      g.lookAt(g.position.clone().multiplyScalar(2)); g.rotateX(Math.PI/2); root.add(g); }
+    const SN=42, sp=new Float32Array(SN*3); for(let k=0;k<SN;k++){ const a=rnd(0,6.28), e=rnd(-1.2,1.2), rr=rnd(.75,1.15); sp[k*3]=Math.cos(a)*Math.cos(e)*rr; sp[k*3+1]=Math.sin(e)*rr; sp[k*3+2]=Math.sin(a)*Math.cos(e)*rr; }
+    const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
+    const spores=new THREE.Points(sg,new THREE.PointsMaterial({ color:0xc4ff7a, size:.05, transparent:true, opacity:.85, depthWrite:false, blending:THREE.AdditiveBlending })); root.add(spores);
+    const glow=new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex('#7ee83a',true), transparent:true, opacity:.3, depthWrite:false, blending:THREE.AdditiveBlending })); glow.scale.setScalar(2.6); root.add(glow);
+    motifAnims.push((t)=>{ rock.material.emissiveIntensity=.45+Math.sin(t*1.4)*.18; spores.rotation.y=t*.05; });
+    root.userData.spin=new THREE.Vector3(.1,.25,.06); return root; }
+  if(M.id==='fabric'){ // 布の小惑星:生成りの大きなボタン(4つ穴+糸の十字)と、パステルの小さな岩
+    const root=new THREE.Mesh(new THREE.SphereGeometry(.8,10,8), new THREE.MeshBasicMaterial({ visible:false }));
+    const btn=new THREE.Group();
+    const disc=new THREE.Mesh(new THREE.CylinderGeometry(.56,.56,.15,40), new THREE.MeshStandardMaterial({ color:0xe9dfca, roughness:.85, metalness:0 }));
+    btn.add(disc);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(.47,.035,10,48), new THREE.MeshStandardMaterial({ color:0xdccfb2, roughness:.9, metalness:0 })); rim.rotation.x=Math.PI/2; rim.position.y=.075; btn.add(rim);
+    const holeMat=new THREE.MeshStandardMaterial({ color:0x8a7a5c, roughness:1 });
+    [[-.13,-.13],[.13,-.13],[-.13,.13],[.13,.13]].forEach(([x,z])=>{ const h=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.02,12), holeMat); h.position.set(x,.08,z); btn.add(h); });
+    const threadMat=new THREE.MeshStandardMaterial({ color:0xd98aa8, roughness:.7 });
+    [-1,1].forEach(s=>{ const th=new THREE.Mesh(new THREE.BoxGeometry(.4,.02,.07), threadMat); th.position.y=.085; th.rotation.y=s*Math.PI/4; btn.add(th); });
+    btn.rotation.set(1.1,.4,.15); root.add(btn);
+    [[0xd9a7c0,.95,.16],[0xa7c4d9,-.85,.13]].forEach(([c,x,r])=>{ const s=new THREE.Mesh(displace(new THREE.IcosahedronGeometry(r,1),.25,3), new THREE.MeshStandardMaterial({ color:c, roughness:.9, metalness:0, flatShading:true })); s.position.set(x,-.25,rnd(-.2,.2)); root.add(s); });
+    root.userData.spin=new THREE.Vector3(.08,.2,.05); return root; }
   const m=new THREE.Mesh(displace(new THREE.IcosahedronGeometry(.62,1),.28,2.4), new THREE.MeshStandardMaterial({ color:0xd8ccdf, roughness:.55, metalness:.35, flatShading:true, emissive:0x3a2f48, emissiveIntensity:.4 }));
   m.userData.spin=new THREE.Vector3(rnd(.2,.6),rnd(.2,.6),rnd(.1,.3)); return m; }
 const rockMat=new THREE.MeshStandardMaterial({ color:0xd8ccdf, roughness:.55, metalness:.35, flatShading:true, emissive:0x3a2f48, emissiveIntensity:.4 });
@@ -1089,6 +1130,44 @@ TAXONOMY.motifs.forEach((M,i,arr)=>{ const a=i/arr.length*Math.PI*2;
   belt.add(m); clickables.push(m); asteroids.push(m); addLabel(M.name,m,'small','asteroids');
   // まわりの小さな岩(触れない)
   for(let k=0;k<5;k++){ const s=new THREE.Mesh(displace(new THREE.IcosahedronGeometry(rnd(.08,.18),0),.3,3), rockMat); s.position.copy(m.position).add(new THREE.Vector3(rnd(-1.4,1.4),rnd(-.6,.6),rnd(-1.4,1.4))); belt.add(s); } });
+
+/* ---------- 7.7 モチーフと惑星を結ぶライン(FUNGI=菌糸のように枝分かれ / FABRIC=ステッチの点線)。
+   作品データ(Notion)が届いたら、そのモチーフの作品がある惑星へだけ引く。帯・月だけでは惑星を決めない ---------- */
+const motifLinks=[];
+function setupMotifLinks(){
+  const defs=[ {id:'fungi', style:'mycelium', color:0x9fe870, opacity:.32}, {id:'fabric', style:'stitch', color:0xe9dcc0, opacity:.5} ];
+  defs.forEach(D=>{ const idx=TAXONOMY.motifs.findIndex(x=>x.id===D.id); if(idx<0) return; const ast=asteroids[idx]; if(!ast) return;
+    const targets=new Set(); ARTWORKS.forEach(a=>{ if(a.motifs.some(s=>norm(s)===D.id)) a.planets.forEach(p=>targets.add(p)); });
+    targets.forEach(pid=>{ const pl=planets[pid]; if(!pl) return;
+      const N=28, pos=new Float32Array((N+1)*3);
+      const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      const mat = D.style==='stitch' ? new THREE.LineDashedMaterial({ color:D.color, transparent:true, opacity:D.opacity, dashSize:.45, gapSize:.3 }) : new THREE.LineBasicMaterial({ color:D.color, transparent:true, opacity:D.opacity, blending:THREE.AdditiveBlending, depthWrite:false });
+      const line=new THREE.Line(geo,mat); line.frustumCulled=false; scene.add(line);
+      const link={ ast, planet:pl, line, geo, style:D.style, N, seed:rnd(0,6.28), branches:[] };
+      if(D.style==='mycelium'){ // 菌糸の枝分かれ:惑星寄りで2本に割れる細い枝
+        [.6,.78].forEach((u,k)=>{ const bp=new Float32Array(7*3); const bg=new THREE.BufferGeometry(); bg.setAttribute('position',new THREE.BufferAttribute(bp,3));
+          const bl=new THREE.Line(bg,new THREE.LineBasicMaterial({ color:D.color, transparent:true, opacity:D.opacity*.65, blending:THREE.AdditiveBlending, depthWrite:false })); bl.frustumCulled=false; scene.add(bl);
+          link.branches.push({ geo:bg, u, side:k?1:-1 }); });
+      }
+      motifLinks.push(link); });
+  });
+}
+const _lv1=new THREE.Vector3(), _lv2=new THREE.Vector3(), _lv3=new THREE.Vector3(), _lv4=new THREE.Vector3(), _lv5=new THREE.Vector3();
+function motifLinkPoint(L,u,out){ L.ast.getWorldPosition(_lv1); _lv2.copy(L.planet.group.position);
+  out.lerpVectors(_lv1,_lv2,u); const sag=Math.sin(u*Math.PI);
+  out.y-=sag*.7; out.x+=Math.sin(u*2.4+L.seed)*sag*.35; out.z+=Math.cos(u*2.1+L.seed)*sag*.35; return out; }
+let _motifLinksReady=false;
+motifAnims.push(()=>{ if(!_motifLinksReady){ if(!ARTWORKS.length) return; setupMotifLinks(); _motifLinksReady=true; }
+  motifLinks.forEach(L=>{ const arr=L.geo.attributes.position.array;
+    for(let i=0;i<=L.N;i++){ motifLinkPoint(L,i/L.N,_lv3); arr[i*3]=_lv3.x; arr[i*3+1]=_lv3.y; arr[i*3+2]=_lv3.z; }
+    L.geo.attributes.position.needsUpdate=true; if(L.style==='stitch') L.line.computeLineDistances();
+    L.branches.forEach(B=>{ const bp=B.geo.attributes.position.array;
+      motifLinkPoint(L,B.u,_lv4); motifLinkPoint(L,Math.min(1,B.u+.2),_lv5);
+      _lv5.x+=Math.sin(L.seed*2)*B.side*.55; _lv5.y+=.3*B.side; _lv5.z+=Math.cos(L.seed*2)*B.side*.55;
+      for(let i=0;i<=6;i++){ const u=i/6; bp[i*3]=_lv4.x+(_lv5.x-_lv4.x)*u; bp[i*3+1]=_lv4.y+(_lv5.y-_lv4.y)*u+Math.sin(u*Math.PI)*.12; bp[i*3+2]=_lv4.z+(_lv5.z-_lv4.z)*u; }
+      B.geo.attributes.position.needsUpdate=true; });
+  });
+});
 
 /* ---------- 8. 星雲(質感・技法)。何枚もの霞を重ねた、環境のような現象 ---------- */
 const nebulae=[];
