@@ -367,7 +367,9 @@ if (LANG!=='ja' && LANG!=='en' && L10N[LANG]) (function(){ const P=L10N[LANG];
 
 /* ---------- 2. 3Dの準備 ---------- */
 const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+/* 入口モード(?entrance=1):ホーム(index.html)に埋め込む表示専用モード。実装は末尾の setupEntrance */
+const ENTRANCE = new URLSearchParams(location.search).get('entrance')==='1';
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:ENTRANCE });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -1984,6 +1986,7 @@ function labelVisible(L){ const s=L.show;
   return false; }
 let last=performance.now(), frame=0;
 function tick(now){ const dt=Math.min(.05,(now-last)/1000), t=now/1000; last=now; frame++;
+  if(ENTRANCE){ if(entranceFrame(t,dt)) renderer.render(scene,camera); requestAnimationFrame(tick); return; }
   if(followObj) goal.target.copy(wpos(followObj));
   cam.target.lerp(goal.target,.07); cam.radius+=(goal.radius-cam.radius)*.07; cam.theta+=(goal.theta-cam.theta)*.12; cam.phi+=(goal.phi-cam.phi)*.12; applyCamera();
   { const k=Math.max(0,Math.min(1,(cam.radius-homeRadius())/(LIMIT_MAX_FN()-homeRadius()))); const fov=52+Math.pow(k,1.2)*34; // 引いていくほど広角に
@@ -2021,6 +2024,65 @@ function tick(now){ const dt=Math.min(.05,(now-last)/1000), t=now/1000; last=now
   zoomDot.style.top=(1-(cam.radius-LIMIT.min)/(LIMIT_MAX_FN()-LIMIT.min))*82+'px';
   requestAnimationFrame(tick); }
 addEventListener('resize',()=>{ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); if(mode==='universe') goal.radius=homeRadius(); });
+/* ---------- 入口モード(?entrance=1) ----------
+   ホーム(index.html)に iframe で埋め込む、表示専用の小さな宇宙。
+   惑星と月は本編と同じ TAXONOMY / MATERIALS / darkMoon で作られたものをそのまま使い、
+   ここでは「選んだ惑星だけを残し、透明な背景で浮かせる」ことだけをする。
+   本編の惑星や月を直せば、入口にも自動で同じものが出る。 */
+let entranceFrame=function(t,dt){ return false; };
+if(ENTRANCE){ (function setupEntrance(){
+  const st=document.createElement('style'); st.textContent='html,body{background:transparent!important}.lbl{display:none!important}'; document.head.appendChild(st);
+  document.querySelectorAll('body > *:not(#c)').forEach(el=>{ el.style.display='none'; });
+  renderer.domElement.style.pointerEvents='none';
+  scene.fog=null;
+  /* 入口用の柔らかい環境:硬い帯のない、なめらかなグラデーションだけを映す(METALLICの黒い帯のような映り込み対策) */
+  (function softEnv(){ const tx=canvasTex(512,256,(g,w,h)=>{ const lg=g.createLinearGradient(0,0,0,h); lg.addColorStop(0,'#57506e'); lg.addColorStop(.48,'#efeaf6'); lg.addColorStop(.56,'#d9d2e6'); lg.addColorStop(1,'#3a3650'); g.fillStyle=lg; g.fillRect(0,0,w,h); });
+    tx.mapping=THREE.EquirectangularReflectionMapping; const pm=new THREE.PMREMGenerator(renderer); scene.environment=pm.fromEquirectangular(tx).texture; tx.dispose(); pm.dispose(); })();
+  const want=(new URLSearchParams(location.search).get('planet')||'').toLowerCase();
+  const ids=TAXONOMY.categories.map(c=>c.id);
+  const pid=ids.indexOf(want)>=0?want:ids[Math.floor(Math.random()*ids.length)];
+  const P=planets[pid], size=P.data.size;
+  /* 選んだ惑星以外は全部隠す(光源は残す) */
+  scene.children.slice().forEach(o=>{ if(o!==P.group && !o.isLight) o.visible=false; });
+  P.group.position.set(0,0,0); P.moonG.rotation.y=0;
+  /* 影:惑星の真下に落ちる、濃く柔らかい楕円。衛星にも、それぞれ小さな影 */
+  const shadowTex=canvasTex(256,256,(g,w,h)=>{ const r=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); r.addColorStop(0,'rgba(0,0,0,0.62)'); r.addColorStop(.55,'rgba(0,0,0,0.34)'); r.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=r; g.fillRect(0,0,w,h); });
+  const GY=-size*1.85;
+  const mkShadow=s=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s), new THREE.MeshBasicMaterial({ map:shadowTex, transparent:true, depthWrite:false })); m.rotation.x=-Math.PI/2; m.position.y=GY; scene.add(m); return m; };
+  const planetShadow=mkShadow(size*3.4);
+  const moonAnims=P.moons.map((m,i)=>{ const sh=mkShadow(1.15); sh.material.opacity=.8;
+    return { m, R:Math.hypot(m.position.x,m.position.z), a:Math.atan2(m.position.z,m.position.x), sp:.16+((i*37)%10)*.022+rnd(0,.05), tilt:.14+((i*53)%10)*.03, ph:rnd(0,6.28), sh }; });
+  const keep=new Set([P.group, planetShadow]); moonAnims.forEach(o=>keep.add(o.sh));
+  let visible=true;
+  if('IntersectionObserver' in window) new IntersectionObserver(es=>{ visible=es[0].isIntersecting; },{threshold:.02}).observe(renderer.domElement);
+  if(window.parent!==window){ try{ window.parent.postMessage({ type:'galaxy-entrance', planet:P.data.name },'*'); }catch(e){} }
+  entranceFrame=function(t,dt){
+    if(!visible || document.hidden) return false; /* 画面の外にあるときは描画を止める */
+    if(frame%50===0) scene.children.forEach(o=>{ if(!keep.has(o) && !o.isLight) o.visible=false; }); /* 後から足された天体(モチーフライン等)も隠す */
+    const bob=Math.sin(t*.55)*.34;
+    P.group.position.y=bob;
+    P.body.rotation.y+=P.spin*dt;
+    /* 本編と同じ素材アニメーション(液体・ホロ・煙・輝き・空気)を、この惑星だけ進める */
+    if(P.body.userData.liquid && frame%2===0) updateLiquid(P.body.userData.liquid,t);
+    if(P.body.userData.holo && frame%3===0){ updateHolo(P.body.userData.holo,t); P.body.userData.frag.rotation.y-=dt*.2; }
+    if(P.body.userData.smoke){ const S=P.body.userData.smoke; S.body.uniforms.uTime.value=t; S.smokeMat.uniforms.uTime.value=t; S.smokeShell.rotation.y+=dt*.04;
+      S.puffs.forEach(o=>{ o.t+=dt*o.sp; if(o.t>1){ o.t=0; o.a=rnd(0,6.28); o.lat=rnd(-.6,.6); } const r=S.R*(1.02+o.t*.55), a=o.a+o.t*.6;
+        o.s.position.set(Math.cos(a)*Math.cos(o.lat)*r, Math.sin(o.lat)*r, Math.sin(a)*Math.cos(o.lat)*r); o.s.scale.setScalar(S.R*o.size*(.35+o.t*.9)); o.s.material.opacity=.38*Math.sin(Math.PI*o.t); }); }
+    if(P.body.userData.iri) P.body.userData.iri.sheen.setHSL((.92+Math.sin(t*.3)*.06)%1,.5,.82);
+    if(P.body.userData.air){ P.body.userData.air.forEach(m=>{ m.uniforms.uTime.value=t; m.uniforms.uPulse.value=airPulse(t); }); P.body.children[0].rotation.y-=dt*.03; }
+    /* 衛星は、それぞれ違う速さと傾きで、手前と奥を行き来しながら回る */
+    moonAnims.forEach(o=>{ o.a+=o.sp*dt; const x=Math.cos(o.a)*o.R, z=Math.sin(o.a)*o.R, y=Math.sin(o.a+o.ph)*o.R*o.tilt;
+      o.m.position.set(x,y,z); o.sh.position.x=x; o.sh.position.z=z; });
+    /* 惑星が上がると影は小さく薄く、下がると濃くなる */
+    const lift=(bob/.34)*.5+.5;
+    planetShadow.scale.setScalar(1.12-lift*.24);
+    planetShadow.material.opacity=.95-lift*.3;
+    /* カメラは少し上から見下ろす */
+    camera.position.set(0,size*1.45,size*4.1);
+    camera.lookAt(0,-size*.12,0);
+    return true;
+  };
+})(); }
 requestAnimationFrame(t=>{ document.getElementById('load').style.opacity=0; setTimeout(()=>document.getElementById('load').remove(),900); last=t; tick(t); });
 setTimeout(hideHint,9000);
 if(!SHOW_MUSIC) document.getElementById('closing').style.display='none'; // 一文は今は出さない

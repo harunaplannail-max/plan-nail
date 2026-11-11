@@ -175,87 +175,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .featured-code{font-family:'Special Elite','Kosugi',sans-serif;font-size:.6rem;color:var(--white);margin-top:6px;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .parts-grid{grid-template-columns:repeat(var(--parts-cols,6),1fr);}
-/* 銀河ジャンルマップへの入り口。星空を小さく閉じ込めたカード */
-.universe-entry{display:flex;align-items:center;gap:12px;margin:0 4px 14px;padding:18px 15px;
-  border-radius:16px;text-decoration:none;position:relative;overflow:hidden;
-  background:radial-gradient(ellipse at 25% 40%, rgba(150,110,230,.38), transparent 55%),
-             radial-gradient(ellipse at 78% 65%, rgba(70,150,230,.3), transparent 55%),
-             radial-gradient(ellipse 60% 18% at 50% 50%, rgba(255,220,240,.12), transparent 70%),
-             rgba(8,8,14,.78);
-  border:1px solid rgba(255,255,255,.16);
-  box-shadow:0 6px 20px rgba(0,0,0,.4);
-  transition:transform .12s cubic-bezier(.2,.9,.3,1.4);}
-.universe-entry:active{transform:scale(.97);}
-.universe-entry .ue-stars{position:absolute;inset:0;pointer-events:none;
-  background-image:
-    radial-gradient(1.2px 1.2px at 93.0% 40.5%, rgba(255,255,255,0.71), transparent),
-    radial-gradient(2px 2px at 11.0% 57.5%, rgba(255,255,255,0.93), transparent),
-    radial-gradient(1px 1px at 5.6% 44.0%, rgba(255,255,255,0.72), transparent),
-    radial-gradient(1px 1px at 54.9% 10.3%, rgba(255,255,255,0.84), transparent),
-    radial-gradient(1px 1px at 62.5% 57.5%, rgba(255,255,255,0.72), transparent),
-    radial-gradient(2px 2px at 40.1% 92.9%, rgba(255,255,255,0.71), transparent),
-    radial-gradient(1px 1px at 29.8% 18.0%, rgba(255,255,255,0.73), transparent),
-    radial-gradient(1.2px 1.2px at 55.8% 66.4%, rgba(255,255,255,0.73), transparent),
-    radial-gradient(2px 2px at 63.3% 38.5%, rgba(255,255,255,0.84), transparent),
-    radial-gradient(1px 1px at 56.2% 60.7%, rgba(255,255,255,0.82), transparent),
-    radial-gradient(2px 2px at 43.0% 33.3%, rgba(255,255,255,0.85), transparent),
-    radial-gradient(1.5px 1.5px at 36.7% 27.4%, rgba(255,255,255,0.74), transparent),
-    radial-gradient(1px 1px at 9.9% 32.0%, rgba(255,255,255,0.82), transparent),
-    radial-gradient(1.2px 1.2px at 72.0% 30.9%, rgba(255,255,255,0.95), transparent),
-    radial-gradient(1px 1px at 51.1% 19.8%, rgba(255,255,255,0.79), transparent),
-    radial-gradient(1.5px 1.5px at 42.5% 91.6%, rgba(255,255,255,0.72), transparent),
-    radial-gradient(2px 2px at 57.0% 83.8%, rgba(255,255,255,0.78), transparent),
-    radial-gradient(1.2px 1.2px at 59.1% 57.2%, rgba(255,255,255,0.81), transparent),
-    radial-gradient(1px 1px at 92.7% 47.7%, rgba(255,255,255,0.87), transparent),
-    radial-gradient(1px 1px at 72.2% 32.9%, rgba(255,255,255,0.84), transparent),
-    radial-gradient(1.5px 1.5px at 29.3% 39.7%, rgba(255,255,255,0.87), transparent),
-    radial-gradient(1px 1px at 92.3% 37.0%, rgba(255,255,255,0.85), transparent),
-    radial-gradient(1.5px 1.5px at 7.7% 74.1%, rgba(255,255,255,0.73), transparent),
-    radial-gradient(1px 1px at 40.2% 87.5%, rgba(255,255,255,0.82), transparent),
-    radial-gradient(1px 1px at 45.1% 54.4%, rgba(255,255,255,0.92), transparent),
-    radial-gradient(1.5px 1.5px at 84.9% 30.1%, rgba(255,255,255,0.80), transparent),
-    radial-gradient(1.2px 1.2px at 67.5% 39.2%, rgba(255,255,255,0.76), transparent),
-    radial-gradient(1px 1px at 18.9% 25.9%, rgba(255,255,255,0.76), transparent),
-    radial-gradient(1.5px 1.5px at 81.8% 21.4%, rgba(255,255,255,0.77), transparent),
-    radial-gradient(1px 1px at 42.2% 38.2%, rgba(255,255,255,0.84), transparent),
-    radial-gradient(1px 1px at 68.3% 51.4%, rgba(255,255,255,0.85), transparent),
-    radial-gradient(1px 1px at 45.8% 83.4%, rgba(255,255,255,0.94), transparent),
-    radial-gradient(2px 2px at 39.7% 40.9%, rgba(255,255,255,0.73), transparent),
-    radial-gradient(1.5px 1.5px at 8.0% 11.1%, rgba(255,255,255,0.75), transparent);}
-/* 2層目の星はゆっくりまたたく */
-.universe-entry .ue-stars::after{content:'';position:absolute;inset:0;animation:ueTwinkle 3.2s ease-in-out infinite alternate;
-  background-image:
-    radial-gradient(0.8px 0.8px at 12.6% 59.1%, rgba(255,255,255,0.58), transparent),
-    radial-gradient(1.2px 1.2px at 16.5% 14.1%, rgba(255,255,255,0.64), transparent),
-    radial-gradient(0.8px 0.8px at 8.8% 23.7%, rgba(255,255,255,0.64), transparent),
-    radial-gradient(1.2px 1.2px at 26.2% 36.3%, rgba(255,255,255,0.64), transparent),
-    radial-gradient(0.8px 0.8px at 13.1% 48.9%, rgba(255,255,255,0.79), transparent),
-    radial-gradient(1px 1px at 48.4% 12.7%, rgba(255,255,255,0.58), transparent),
-    radial-gradient(1px 1px at 73.1% 48.1%, rgba(255,255,255,0.72), transparent),
-    radial-gradient(1.2px 1.2px at 4.2% 90.6%, rgba(255,255,255,0.68), transparent),
-    radial-gradient(0.8px 0.8px at 68.2% 87.3%, rgba(255,255,255,0.74), transparent),
-    radial-gradient(1px 1px at 95.9% 82.7%, rgba(255,255,255,0.72), transparent),
-    radial-gradient(1px 1px at 51.8% 86.7%, rgba(255,255,255,0.64), transparent),
-    radial-gradient(0.8px 0.8px at 53.1% 75.1%, rgba(255,255,255,0.63), transparent),
-    radial-gradient(0.8px 0.8px at 60.9% 76.0%, rgba(255,255,255,0.74), transparent),
-    radial-gradient(0.8px 0.8px at 79.4% 78.6%, rgba(255,255,255,0.73), transparent),
-    radial-gradient(0.8px 0.8px at 21.2% 49.4%, rgba(255,255,255,0.73), transparent),
-    radial-gradient(0.8px 0.8px at 77.9% 47.5%, rgba(255,255,255,0.60), transparent),
-    radial-gradient(1.2px 1.2px at 93.8% 45.3%, rgba(255,255,255,0.78), transparent),
-    radial-gradient(1px 1px at 93.7% 37.8%, rgba(255,255,255,0.61), transparent),
-    radial-gradient(0.8px 0.8px at 47.1% 35.4%, rgba(255,255,255,0.67), transparent),
-    radial-gradient(1.2px 1.2px at 82.7% 48.2%, rgba(255,255,255,0.71), transparent),
-    radial-gradient(1.2px 1.2px at 10.1% 64.5%, rgba(255,255,255,0.78), transparent),
-    radial-gradient(1.2px 1.2px at 74.0% 48.0%, rgba(255,255,255,0.59), transparent),
-    radial-gradient(3px 3px at 22% 55%, rgba(255,240,255,.9), transparent),
-    radial-gradient(2.5px 2.5px at 66% 30%, rgba(220,235,255,.9), transparent);}
-@keyframes ueTwinkle{from{opacity:.25}to{opacity:1}}
-.universe-entry .ue-text{flex:1;position:relative;text-align:center;}
-.universe-entry b{padding-left:.14em;}
-.universe-entry b{display:block;font-family:'Special Elite','Kosugi',sans-serif;font-size:.78rem;
-  letter-spacing:.14em;color:#fff;}
-.universe-entry i{display:block;font-style:normal;font-size:.58rem;color:rgba(255,255,255,.5);margin-top:3px;}
-.universe-entry .ue-arrow{display:none;}
+/* 銀河ジャンルマップへの入り口。惑星がホームの上に直接浮かぶ、枠なしの透明な窓 */
+.galaxy-entry{display:block;margin:10px 4px 22px;text-decoration:none;text-align:center;-webkit-tap-highlight-color:transparent;}
+.galaxy-entry .ge-frame{display:block;height:300px;}
+.galaxy-entry .ge-iframe{display:block;width:100%;height:100%;border:0;background:transparent;pointer-events:none;}
+.galaxy-entry .ge-name{display:block;font-family:'Special Elite','Kosugi',sans-serif;color:#fff;font-size:1.02rem;letter-spacing:.34em;padding-left:.34em;}
+.galaxy-entry .ge-planet{display:block;min-height:1em;font-size:.6rem;letter-spacing:.3em;padding-left:.3em;color:rgba(255,255,255,.45);margin-top:5px;}
 /* ボタンの右の矢印(›)は外す。ボタン全体がガラスで押せる形なので、矢印がなくても伝わる */
 .lam-go{display:none !important;}
 
@@ -1348,13 +1273,19 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
 <section class="pub-section" id="trends">
 
   <!-- 銀河ジャンルマップへの入り口(別ページ universe.html)。3Dの宇宙で、5大分類・サブジャンル・作品写真を旅する -->
-  <a class="universe-entry" href="./universe.html">
-    <span class="ue-stars"></span>
-    <span class="ue-text">
-      <b>GALAXY OF NAIL</b>
-    </span>
-    <span class="ue-arrow">→</span>
+  <a class="galaxy-entry" href="./universe.html" aria-label="GALAXY OF NAIL">
+    <span class="ge-frame"><iframe class="ge-iframe" data-src="./universe.html?entrance=1" title="GALAXY OF NAIL" tabindex="-1" scrolling="no"></iframe></span>
+    <span class="ge-name">GALAXY OF NAIL</span>
+    <span class="ge-planet" id="gePlanet"></span>
   </a>
+  <script>
+  /* 入口の惑星は、画面に入ってきたときに初めて読み込む。表示中の惑星名は iframe からの通知で出す */
+  (function(){ var a=document.querySelector('.galaxy-entry'); if(!a) return; var f=a.querySelector('.ge-iframe'); if(!f) return;
+    function load(){ if(!f.getAttribute('src')) f.setAttribute('src', f.getAttribute('data-src')); }
+    if('IntersectionObserver' in window){ var io=new IntersectionObserver(function(es){ if(es[0].isIntersecting){ load(); io.disconnect(); } },{ rootMargin:'120px' }); io.observe(a); } else load();
+    window.addEventListener('message', function(e){ if(e.data && e.data.type==='galaxy-entrance' && e.data.planet){ var p=document.getElementById('gePlanet'); if(p) p.textContent=e.data.planet; } });
+  })();
+  </script>
 
   <!-- 横スクロールを最上部に置く。見出しは削除し、
        ネイルチップが並ぶことでセクションの内容が一目で伝わるようにしている -->
