@@ -261,6 +261,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .color-card img{width:100%;height:100%;object-fit:contain;display:block;
   filter:drop-shadow(0 4px 8px rgba(0,0,0,.25));}
 .color-card-swatch{width:100%;height:100%;}
+/* COLORSグリッド:正方形に近い画布の切り抜きサムネ(600×600など)は、縦長セル(0.72)では幅いっぱいまでしか伸びず、
+   チップがセル高さの約71%に止まって、縦長の写真サムネより小さく見える。
+   そこで正方形に近い画像だけ 1/0.72≒1.39倍に拡大し、はみ出す左右の透明な余白はセル(overflow:hidden)で切る。
+   倍率は --mat-sq-scale で調整する。判定は JS の MAT_SQUARE_MIN_RATIO(縦横比0.9以上) */
+.color-card{--mat-sq-scale:1.39;}
+.color-card.mat-img-square > img{transform:scale(var(--mat-sq-scale));transform-origin:center;}
 .color-name{position:absolute;bottom:0;left:0;right:0;padding:5px 3px;background:rgba(0,0,0,.7);font-size:.55rem;text-align:center;color:var(--white);opacity:0;transition:opacity .2s;}
 .fav-heart{position:absolute;top:5px;left:5px;width:22px;height:22px;z-index:2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;}
 .fav-heart:active{transform:scale(.85);}
@@ -3281,6 +3287,8 @@ function renderFeaturedShelf() {
   });
 }
 
+// COLORSグリッド:この縦横比(幅÷高さ)以上の画像を「正方形に近い画布」とみなして拡大する
+const MAT_SQUARE_MIN_RATIO = 0.9;
 function renderColorGrids() {
   // カテゴリのタブ名(HTMLのid用)と、Notionのカテゴリ名の対応。
   // グリッターは「ラメ入りジェル(Glitter Gel)」と「粉ラメ(Glitter Powder)」の2つに分けている。
@@ -3319,12 +3327,20 @@ function renderColorGrids() {
       if (gridImg) {
         const img = document.createElement('img');
         img.alt = c.name || '';
+        // 読み込めたら実寸の縦横比を見て、正方形に近い画布だけ拡大表示のクラスを付ける(縦長の写真はそのまま)
+        const markSquare = () => {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          if (w && h && w / h >= MAT_SQUARE_MIN_RATIO) el.classList.add('mat-img-square');
+        };
+        img.addEventListener('load', markSquare);
         loadImgWithRetry(img, gridImg, () => {
+          el.classList.remove('mat-img-square');
           const sw = document.createElement('div');
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
           img.replaceWith(sw);
         });
+        if (img.complete) markSquare(); // キャッシュ済みで、すでに読み込み終わっている場合
         el.appendChild(img);
       } else {
         const sw = document.createElement('div');
