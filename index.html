@@ -235,6 +235,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .cc-controls{display:flex;flex-wrap:wrap;gap:16px 14px;margin-bottom:24px;}
 .cc-control{display:flex;flex-direction:column;gap:5px;}
 .cc-mini-label{font-family:'Special Elite','Kosugi',sans-serif;font-size:.58rem;letter-spacing:.1em;color:var(--gray-mid);text-transform:uppercase;}
+/* 色別フィルター:既存のセレクトの下に1行。丸い色ドット+系統名。選択中はドットにリングをつけるだけ(ベタ塗りにしない) */
+.cc-color-row{flex-basis:100%;display:flex;flex-direction:column;gap:7px;}
+.cc-color-bar{display:flex;flex-wrap:wrap;gap:8px 14px;}
+.cc-color-btn{display:inline-flex;align-items:center;gap:6px;padding:3px 0;background:none;border:0;cursor:pointer;
+  font-family:'Special Elite','Kosugi',sans-serif;font-size:.64rem;letter-spacing:.06em;color:rgba(255,255,255,.5);white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:color .2s;}
+.cc-color-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);outline:1px solid transparent;outline-offset:2px;transition:outline-color .2s;}
+.cc-color-btn.active{color:var(--white);}
+.cc-color-btn.active .cc-color-dot{outline-color:rgba(255,255,255,.85);}
 .color-card{border-radius:3px;cursor:pointer;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;
   /* 画像が読み込まれる前から高さを確定させておく(ネイルチップの縦長比に近い値)。
      以前は height:auto で画像の実寸に合わせていたため、読み込みが完了するたびに
@@ -1189,6 +1197,10 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
           <option value="10">10列</option>
         </select>
       </div>
+    </div>
+    <div class="cc-color-row">
+      <span class="cc-mini-label">色</span>
+      <div class="cc-color-bar" id="ccColorBar"></div>
     </div>
   </div>
 
@@ -2310,6 +2322,87 @@ function closeMenu() { document.getElementById('smenu').classList.add('closed');
 let ccMakerFilter = 'ALL';
 let ccMoodFilter = 'ALL';
 let ccSortOrder = 'new';
+let ccColorFilter = 'ALL';
+
+// ── 色別フィルター ──
+// 各商材の CSS値(#rrggbb)を HSL に直して、色の系統を自動で決める(Notion側の設定は不要)。
+// 系統の並びと、ボタンのドットに使う代表色。
+const COLOR_FAMILIES = [
+  { id:'white',  label:'ホワイト・クリア',   dot:'#f3f1ec' },
+  { id:'black',  label:'ブラック・グレー',   dot:'#2b2b2e' },
+  { id:'brown',  label:'ブラウン・ベージュ', dot:'#9a7656' },
+  { id:'red',    label:'レッド',            dot:'#c4242e' },
+  { id:'pink',   label:'ピンク',            dot:'#f1a3ba' },
+  { id:'orange', label:'オレンジ・コーラル', dot:'#ef8a55' },
+  { id:'yellow', label:'イエロー',          dot:'#f0d04f' },
+  { id:'green',  label:'グリーン',          dot:'#5da56b' },
+  { id:'blue',   label:'ブルー',            dot:'#4a7fc1' },
+  { id:'purple', label:'パープル',          dot:'#8d6cc0' },
+];
+// 判定のしきい値。あとから調整するときは、ここの数字だけ直す(H=0〜360、S・L=0〜1。範囲は [以上, 未満])
+const COLOR_RULES = {
+  whiteMinL: 0.88, whiteMaxS: 0.35,                 // 1. ホワイト・クリア:L≥0.88 かつ S≤0.35
+  blackMaxL: 0.16, grayMaxS: 0.10,                  // 2. ブラック・グレー:L≤0.16、または S≤0.10
+  brownH: [15, 45], brownMaxL: 0.45, beigeMaxS: 0.45, // 3. ブラウン・ベージュ:H15–45 で、L≤0.45、または S≤0.45 かつ L>0.45
+  redBelowH: 8, redFromH: 345,                      // 4. レッド:H<8 または H≥345
+  pinkH: [315, 345], pinkLightMinL: 0.55,           // 5. ピンク:H315–345、または H345–360/0–15 で L≥0.55
+  orangeH: [8, 45], yellowH: [45, 75], greenH: [75, 165], blueH: [165, 255], purpleH: [255, 315],
+};
+// CSS値は API 側で、未入力のとき '#cccccc' が入って返ってくる。これは「色が入っていない」として扱う
+const CSS_UNSET = '#cccccc';
+function hexToHsl(hex) {
+  const m = String(hex || '').match(/#([0-9a-f]{6}|[0-9a-f]{3})(?![0-9a-f])/i);
+  if (!m) return null;
+  const h6 = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+  if (('#' + h6).toLowerCase() === CSS_UNSET) return null;
+  const r = parseInt(h6.slice(0,2),16)/255, g = parseInt(h6.slice(2,4),16)/255, b = parseInt(h6.slice(4,6),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), l = (max+min)/2, d = max-min;
+  let h = 0, s = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2*l - 1));
+    if (max === r) h = ((g-b)/d) % 6; else if (max === g) h = (b-r)/d + 2; else h = (r-g)/d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return { h, s, l };
+}
+// 色の系統を返す(上から順に、最初に当てはまったもの)。色が読めないときは null
+function colorFamilyOf(hex) {
+  const c = hexToHsl(hex); if (!c) return null;
+  const { h, s, l } = c, R = COLOR_RULES, inH = a => h >= a[0] && h < a[1];
+  if (l >= R.whiteMinL && s <= R.whiteMaxS) return 'white';
+  if (l <= R.blackMaxL || s <= R.grayMaxS) return 'black';
+  if (inH(R.brownH) && (l <= R.brownMaxL || s <= R.beigeMaxS)) return 'brown';
+  if (h < R.redBelowH || h >= R.redFromH) return 'red';
+  if (inH(R.pinkH) || ((h >= R.redFromH || h < 15) && l >= R.pinkLightMinL)) return 'pink';
+  if (inH(R.orangeH)) return 'orange';
+  if (inH(R.yellowH)) return 'yellow';
+  if (inH(R.greenH)) return 'green';
+  if (inH(R.blueH)) return 'blue';
+  if (inH(R.purpleH)) return 'purple';
+  return null;
+}
+function buildColorFamilyBar() {
+  const bar = document.getElementById('ccColorBar'); if (!bar) return;
+  bar.innerHTML = '';
+  const all = { id:'ALL', label:'ALL', dot:'conic-gradient(#c4242e,#ef8a55,#f0d04f,#5da56b,#4a7fc1,#8d6cc0,#f1a3ba,#c4242e)' };
+  [all].concat(COLOR_FAMILIES).forEach(f => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cc-color-btn' + (ccColorFilter === f.id ? ' active' : '');
+    const dot = document.createElement('span');
+    dot.className = 'cc-color-dot';
+    dot.style.background = f.dot;
+    b.appendChild(dot);
+    b.appendChild(document.createTextNode(f.label));
+    b.onclick = () => {
+      // 選んでいる系統をもう一度タップすると解除(ALLに戻る)
+      ccColorFilter = (ccColorFilter === f.id || f.id === 'ALL') ? 'ALL' : f.id;
+      buildColorFamilyBar();
+      renderColorGrids();
+    };
+    bar.appendChild(b);
+  });
+}
 
 function setColorCols(n) {
   document.getElementById('colors').style.setProperty('--cc-cols', n);
@@ -3203,6 +3296,8 @@ function renderColorGrids() {
         const moods = (m.mood||'').split(',').map(s=>s.trim());
         if (!moods.includes(ccMoodFilter)) return false;
       }
+      // 色別:CSS値が入っていないものは、系統を選んでいるときだけ隠す
+      if (ccColorFilter !== 'ALL' && colorFamilyOf(m.css) !== ccColorFilter) return false;
       return true;
     });
     filtered.sort((a, b) => {
@@ -4549,6 +4644,7 @@ function buildColorFilters() {
     ccMoodFilter = moodSelect.value;
     renderColorGrids();
   };
+  buildColorFamilyBar();
 }
 
 // ── パーツチャート ──
