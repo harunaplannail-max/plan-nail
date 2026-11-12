@@ -2344,7 +2344,7 @@ const COLOR_RULES = {
   whiteMinL: 0.88, whiteMaxS: 0.35,                 // 1. ホワイト・クリア:L≥0.88 かつ S≤0.35
   blackMaxL: 0.16, grayMaxS: 0.10,                  // 2. ブラック・グレー:L≤0.16、または S≤0.10
   brownH: [15, 45], brownMaxL: 0.45, beigeMaxS: 0.45, // 3. ブラウン・ベージュ:H15–45 で、L≤0.45、または S≤0.45 かつ L>0.45
-  redBelowH: 8, redFromH: 345,                      // 4. レッド:H<8 または H≥345
+  redBelowH: 8, redFromH: 345,                      // 4. レッド:H<8 または H≥345(明るいもの L≥0.55 は除く→ピンクへ)
   pinkH: [315, 345], pinkLightMinL: 0.55,           // 5. ピンク:H315–345、または H345–360/0–15 で L≥0.55
   orangeH: [8, 45], yellowH: [45, 75], greenH: [75, 165], blueH: [165, 255], purpleH: [255, 315],
 };
@@ -2372,7 +2372,8 @@ function colorFamilyOf(hex) {
   if (l >= R.whiteMinL && s <= R.whiteMaxS) return 'white';
   if (l <= R.blackMaxL || s <= R.grayMaxS) return 'black';
   if (inH(R.brownH) && (l <= R.brownMaxL || s <= R.beigeMaxS)) return 'brown';
-  if (h < R.redBelowH || h >= R.redFromH) return 'red';
+  // 明るい赤み(L≥0.55)はレッドにせず、次のピンクで拾う(ドライローズなど、淡いピンクがレッドに入らないように)
+  if ((h < R.redBelowH || h >= R.redFromH) && l < R.pinkLightMinL) return 'red';
   if (inH(R.pinkH) || ((h >= R.redFromH || h < 15) && l >= R.pinkLightMinL)) return 'pink';
   if (inH(R.orangeH)) return 'orange';
   if (inH(R.yellowH)) return 'yellow';
