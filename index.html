@@ -1900,6 +1900,14 @@ function partDisplayScale(sizeMm) {
   // カードより大きくすると端が切れるので、上限は1(カードいっぱい)にする
   return Math.max(0.1, Math.min(1, sizeMm / cardWidthMm));
 }
+// フラットバックのプレシオサ(FB〜のシリーズ)は、サムネイル画像の中でも石が実寸スケール
+// (約54px/mm・画布600px≒約11mm)で描かれているため、「画像がそのまま実寸」という前提の
+// 表示だと二重に小さくなってしまう。チャート/Playでは大きめに見せるため、表示用の
+// サイズを sqrt(実寸×10) に底上げして使う(小さい石ほど倍率が上がり、大小の順序は保たれる)。
+// 例: SS5 1.8mm→約4.2mm相当 / SS12 3.1mm→約5.6mm相当 / SS40 8.5mm→約9.2mm相当
+function fbDisplaySize(sizeMm) {
+  return Math.sqrt(sizeMm * 10);
+}
 function getRelativeSizeRatio(item) {
   // __src はScatter View内でのみ付与される目印で、通常のお気に入り登録時には
   // 付いていないことがあるため、より確実な「サイズ(mm)情報の有無」で判定する。
@@ -3694,6 +3702,13 @@ function openSeriesPopup(seriesName) {
         : `<div class="series-sw-fill" style="background-color:${part.css || '#cccccc'}"></div>`;
       cell.innerHTML = inner + '<span class="series-sw-code"></span>';
       const sz = extractSizeMetric(part.size);
+      // フラットバックのプレシオサは、石が画像内でも実寸スケールで描かれているため
+      // 小さいサイズが潰れて見えない。セル内でも大きめに表示する(小さい石ほど倍率を
+      // 上げつつ、大小の順序は保つ)
+      if (src && seriesName.startsWith('FB ') && sz != null && sz > 0) {
+        const imgEl = cell.querySelector('.series-sw-img');
+        if (imgEl) imgEl.style.transform = 'scale(' + Math.max(1, Math.min(2.6, Math.sqrt(7 / sz))).toFixed(2) + ')';
+      }
       cell.querySelector('.series-sw-code').textContent = (part.name || '') + (showPartSize && sz != null ? ' · ' + sz + 'mm' : '');
       cell.onclick = () => { closeSeriesPopup(); openColorDetail(part); };
       gridEl.appendChild(cell);
@@ -4654,9 +4669,9 @@ function renderPartsGrid() {
     el.className = 'color-card';
     // Scatter Viewと同じ基準(12mm)で、グリッド上でも大小差をつける
     const sizeNum = extractSizeMetric(p.size);
-    // フラットバックのプレシオサ(FB〜のシリーズ)は、畳んだカードだと代表の実寸では
-    // 石が小さすぎて見えないため、シリーズカードに限り10mm相当で大きめに表示する
-    const fbSeriesCard = !!(seriesGroup && p.series && p.series.startsWith('FB '));
+    // フラットバックのプレシオサ(FB〜のシリーズ)は、実寸のままでは石が小さすぎて
+    // 見えないため、FBのカード(畳んだシリーズカード・単体どちらも)10mm相当で大きめに表示する
+    const fbSeriesCard = !!(p.series && p.series.startsWith('FB '));
     if (fbSeriesCard) {
       el.classList.add('sized');
       el.style.setProperty('--pscale', partDisplayScale(10));
@@ -5349,7 +5364,9 @@ function initScatterPhysics() {
       // チップは直径2Rの枠に縦いっぱい(=長さ16.5mm)で描かれる。パーツも同じ物差しで、
       // 直径 = 実寸mm になるよう 半径 = R × 実寸 ÷ 16.5 にする(1.5mmスタッズ≒0.09R)
       // 小さすぎて見えなくならないよう下限だけ設ける(指で掴む範囲はタッチ側で別に確保)
-      const ratio = sizeNum / CHIP_LENGTH_MM;
+      // フラットバックのプレシオサだけは表示サイズを底上げする(チャートと同じ fbDisplaySize)
+      const dispSize = (item.series && item.series.startsWith('FB ')) ? fbDisplaySize(sizeNum) : sizeNum;
+      const ratio = dispSize / CHIP_LENGTH_MM;
       return Math.max(R*0.1, Math.min(R*1.4, R * ratio));
     }
     return R;
@@ -5361,6 +5378,12 @@ function initScatterPhysics() {
     const c = document.createElement('canvas');
     // サイズ自体はもう実寸で決まっているので、見た目の余白は種類を問わず統一
     const chipScale = 2.0;
+    // フラットバックのプレシオサは、石が画像内でも実寸スケール(画布600px≒約11mm)で
+    // 描かれているため、そのまま貼ると二重に小さくなる。石が枠いっぱいに来るよう
+    // 拡大してから描く(拡大率は石の実寸から逆算し、上限を設ける)
+    const fbZoom = (item.__src === 'part' && item.series && item.series.startsWith('FB '))
+      ? (() => { const s = extractSizeMetric(item.size); return (s != null && s > 0) ? Math.min(9, 10.5 / s) : 1; })()
+      : 1;
     c.width = c.height = Math.round(scatterRadii[i]*chipScale*dpr);
     const ctx = c.getContext('2d');
     const w = c.width;
@@ -5374,7 +5397,7 @@ function initScatterPhysics() {
       img.onload = () => {
         // object-fit:contain 相当。円に切り抜かず、Notionのサムネイル画像の輪郭そのまま浮かべる
         const iw = img.naturalWidth || w, ih = img.naturalHeight || w;
-        const scale = Math.min(w / iw, w / ih);
+        const scale = Math.min(w / iw, w / ih) * fbZoom;
         const dw = iw * scale, dh = ih * scale;
         const dx = (w - dw) / 2, dy = (w - dh) / 2;
         ctx.clearRect(0, 0, w, w);
