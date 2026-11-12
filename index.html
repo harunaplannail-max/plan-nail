@@ -4654,7 +4654,13 @@ function renderPartsGrid() {
     el.className = 'color-card';
     // Scatter Viewと同じ基準(12mm)で、グリッド上でも大小差をつける
     const sizeNum = extractSizeMetric(p.size);
-    if (sizeNum != null && sizeNum > 0) {
+    // フラットバックのプレシオサ(FB〜のシリーズ)は、畳んだカードだと代表の実寸では
+    // 石が小さすぎて見えないため、シリーズカードに限り10mm相当で大きめに表示する
+    const fbSeriesCard = !!(seriesGroup && p.series && p.series.startsWith('FB '));
+    if (fbSeriesCard) {
+      el.classList.add('sized');
+      el.style.setProperty('--pscale', partDisplayScale(10));
+    } else if (sizeNum != null && sizeNum > 0) {
       // カード(=ネイルチップ約16mm)に対する実寸比で、中の画像だけを縮める。
       // カード自体は縮めないので、並びが崩れず、バッジも切れない。
       el.classList.add('sized');
