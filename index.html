@@ -3626,10 +3626,15 @@ function openSeriesPopup(seriesName) {
   // カラー: 「シリーズ全色リスト」が入った代表1件から、全色リスト・説明・画像を拝借する
   // パーツ(色違い): 全色リストは不要。同じシリーズ名のパーツを自動で全部並べる
   const rep = notionMaterials.find(m => m.series === seriesName && m.seriesColorList);
-  // 色違い・サイズ違いのどちらも同じシリーズ名でまとめる。名前順→サイズの小さい順に並べる
+  // 色違い・サイズ違いのどちらも同じシリーズ名でまとめる。サイズの小さい順(未入力は末尾)、同サイズは名前順
   const partMembers = rep ? [] : notionParts.filter(p => p.series === seriesName)
-    .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja') ||
-      ((extractSizeMetric(a.size) || 0) - (extractSizeMetric(b.size) || 0)));
+    .sort((a, b) => {
+      const sa = extractSizeMetric(a.size), sb = extractSizeMetric(b.size);
+      if (sa == null && sb == null) return String(a.name).localeCompare(String(b.name), 'ja');
+      if (sa == null) return 1;
+      if (sb == null) return -1;
+      return (sa - sb) || String(a.name).localeCompare(String(b.name), 'ja');
+    });
   // シリーズの中でサイズが違うものがあるときだけ、名前の横にサイズ(mm)を出す
   const partSizes = new Set(partMembers.map(p => extractSizeMetric(p.size)).filter(v => v != null));
   const showPartSize = partSizes.size > 1;
@@ -4622,7 +4627,29 @@ function renderPartsGrid() {
     return partsSortOrder === 'old' ? ta - tb : tb - ta;
   });
   if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当するパーツがありません</p>'; return; }
+  // シリーズが付いたパーツは、シリーズごとに1枚のカードへ畳む(カード位置は最初の出現順)
+  const displayItems = [];
+  const seriesGroups = new Map();
   filtered.forEach(p => {
+    if (!p.series) { displayItems.push({ item: p, members: null }); return; }
+    if (!seriesGroups.has(p.series)) {
+      const group = { item: p, members: [p] };
+      seriesGroups.set(p.series, group);
+      displayItems.push(group);
+    } else {
+      seriesGroups.get(p.series).members.push(p);
+    }
+  });
+  // 複数メンバー時は、シリーズ説明/画像を持つものを代表にする
+  displayItems.forEach(g => {
+    if (g.members && g.members.length > 1) {
+      const rep = g.members.find(m => m.seriesDesc || (m.seriesImages && m.seriesImages.length));
+      if (rep) g.item = rep;
+    }
+  });
+  displayItems.forEach(g => {
+    const p = g.item;
+    const seriesGroup = (g.members && g.members.length > 1) ? g.members : null;
     const el = document.createElement('div');
     el.className = 'color-card';
     // Scatter Viewと同じ基準(12mm)で、グリッド上でも大小差をつける
@@ -4655,9 +4682,9 @@ function renderPartsGrid() {
     // 在庫切れ表示は詳細ポップアップ左上のバッジ(openColorDetail側)だけに任せる。
     const label = document.createElement('span');
     label.className = 'color-name';
-    label.textContent = p.name || '';
+    label.textContent = seriesGroup ? p.series : (p.name || '');
     el.appendChild(label);
-    el.onclick = () => openColorDetail(p);
+    el.onclick = () => seriesGroup ? openSeriesPopup(p.series) : openColorDetail(p);
     grid.appendChild(el);
   });
 }
