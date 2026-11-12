@@ -3859,13 +3859,8 @@ function openSeriesPopup(seriesName) {
         : `<div class="series-sw-fill" style="background-color:${part.css || '#cccccc'}"></div>`;
       cell.innerHTML = inner + '<span class="series-sw-code"></span>';
       const sz = extractSizeMetric(part.size);
-      // フラットバックのプレシオサは、石が画像内でも実寸スケールで描かれているため
-      // 小さいサイズが潰れて見えない。セル内でも大きめに表示する(小さい石ほど倍率を
-      // 上げつつ、大小の順序は保つ)
-      if (src && seriesName.startsWith('FB ') && sz != null && sz > 0) {
-        const imgEl = cell.querySelector('.series-sw-img');
-        if (imgEl) imgEl.style.transform = 'scale(' + Math.max(1, Math.min(2.6, Math.sqrt(7 / sz))).toFixed(2) + ')';
-      }
+      // サイズ別一覧では拡大補正をせず、画像に描かれた実寸スケールのまま見せる
+      // (グリッドのシリーズカード側は大きめ表示のまま。2026-11-13 Haruna指示)
       cell.querySelector('.series-sw-code').textContent = (part.name || '') + (showPartSize && sz != null ? ' · ' + sz + 'mm' : '');
       cell.onclick = () => { closeSeriesPopup(); openColorDetail(part); };
       gridEl.appendChild(cell);
