@@ -261,12 +261,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .color-card img{width:100%;height:100%;object-fit:contain;display:block;
   filter:drop-shadow(0 4px 8px rgba(0,0,0,.25));}
 .color-card-swatch{width:100%;height:100%;}
-/* COLORSグリッド:正方形に近い画布の切り抜きサムネ(600×600など)は、縦長セル(0.72)では幅いっぱいまでしか伸びず、
-   チップがセル高さの約71%に止まって、縦長の写真サムネより小さく見える。
-   そこで正方形に近い画像だけ 1/0.72≒1.39倍に拡大し、はみ出す左右の透明な余白はセル(overflow:hidden)で切る。
-   倍率は --mat-sq-scale で調整する。判定は JS の MAT_SQUARE_MIN_RATIO(縦横比0.9以上) */
-.color-card{--mat-sq-scale:1.39;}
-.color-card.mat-img-square > img{transform:scale(var(--mat-sq-scale));transform-origin:center;}
+/* COLORSグリッド:切り抜きサムネの被写体(チップ)が小さく見えるものだけ、画像ごとに決めた倍率で拡大する。
+   倍率は JS の matZoomFor() が、画像の不透明な部分の大きさから計算して --mat-zoom に入れる(1.0〜1.39)。
+   拡大してもセル(overflow:hidden)からはみ出さない倍率にしてあるので、切れるのは透明な余白だけ */
+.color-card.mat-img-zoom > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
 .color-name{position:absolute;bottom:0;left:0;right:0;padding:5px 3px;background:rgba(0,0,0,.7);font-size:.55rem;text-align:center;color:var(--white);opacity:0;transition:opacity .2s;}
 .fav-heart{position:absolute;top:5px;left:5px;width:22px;height:22px;z-index:2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;}
 .fav-heart:active{transform:scale(.85);}
@@ -3287,8 +3285,57 @@ function renderFeaturedShelf() {
   });
 }
 
-// COLORSグリッド:この縦横比(幅÷高さ)以上の画像を「正方形に近い画布」とみなして拡大する
-const MAT_SQUARE_MIN_RATIO = 0.9;
+// ── COLORSグリッド:被写体の大きさに合わせた拡大 ──
+// セルは縦長(幅0.72:高さ1)で、画像は contain で収める。正方形の画布だと幅いっぱいで止まり、
+// 中のチップがセル高さの約7割にしかならず、縦長の写真サムネより小さく見える。
+// そこで画像の不透明な部分(alpha≥128、薄い影は含めない)の範囲を測り、
+// 「被写体の高さがセル高さの MAT_ZOOM.target になる」倍率で拡大する。
+// ただし、被写体がセルの左右・上下からはみ出す倍率にはしない。上限 MAT_ZOOM.max、下限1.0(縮小はしない)。
+const MAT_ZOOM = { cell: 0.72, target: 0.98, max: 1.39, alphaMin: 128, scanSize: 100 };
+const matZoomCache = new Map(); // URL → 倍率(フィルターを変えて描き直しても、測り直さない)
+// 被写体の範囲(画像に対する割合 0〜1)を測る。読めない(CORS等)ときは null
+function matSubjectBox(img) {
+  try {
+    const nw = img.naturalWidth, nh = img.naturalHeight; if (!nw || !nh) return null;
+    const k = MAT_ZOOM.scanSize / Math.max(nw, nh);
+    const w = Math.max(1, Math.round(nw * k)), h = Math.max(1, Math.round(nh * k));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data; // CORSで読めないと、ここで例外になる
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (d[(y * w + x) * 4 + 3] >= MAT_ZOOM.alphaMin) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return null; // 全部透明
+    return { l: x0 / w, r: (x1 + 1) / w, t: y0 / h, b: (y1 + 1) / h, ar: nw / nh };
+  } catch (e) { return null; }
+}
+// 倍率を決める。セルの幅を0.72、高さを1として計算する(列数が変わっても比率は同じ)
+function matZoomFor(box) {
+  if (!box) return 1;
+  const Z = MAT_ZOOM, cw = Z.cell, ch = 1;
+  // contain で描かれたときの画像の大きさ(セルより横長なら幅いっぱい、縦長なら高さいっぱい)
+  const dw = box.ar >= cw / ch ? cw : ch * box.ar, dh = dw / box.ar;
+  // 被写体の上下左右の端の位置(セルの中心からの距離)
+  const L = (box.l - .5) * dw, R = (box.r - .5) * dw, T = (box.t - .5) * dh, B = (box.b - .5) * dh;
+  const sTarget = (Z.target * ch) / ((box.b - box.t) * dh);          // 被写体の高さを目標に合わせる倍率
+  const sSide = (cw / 2) / Math.max(Math.abs(L), Math.abs(R), 1e-6);    // 左右がはみ出さない上限
+  const sVert = (ch / 2) / Math.max(Math.abs(T), Math.abs(B), 1e-6);    // 上下がはみ出さない上限
+  return Math.max(1, Math.min(sTarget, sSide, sVert, Z.max));
+}
+// 表示用の画像とは別に、測るためだけの画像を crossOrigin で読む
+// (表示用の img に crossOrigin を付けると、端末によって画像自体が出なくなることがあったため、表示側には付けない)
+function applyMatZoom(el, src) {
+  const set = z => { if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
+  if (matZoomCache.has(src)) { set(matZoomCache.get(src)); return; }
+  const probe = new Image();
+  probe.crossOrigin = 'anonymous';
+  probe.decoding = 'async';
+  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector(':scope > img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
+  probe.onerror = () => { matZoomCache.set(src, 1); }; // 読めなければ拡大しない(エラーは出さない)
+  probe.src = src;
+}
 function renderColorGrids() {
   // カテゴリのタブ名(HTMLのid用)と、Notionのカテゴリ名の対応。
   // グリッターは「ラメ入りジェル(Glitter Gel)」と「粉ラメ(Glitter Powder)」の2つに分けている。
@@ -3327,20 +3374,18 @@ function renderColorGrids() {
       if (gridImg) {
         const img = document.createElement('img');
         img.alt = c.name || '';
-        // 読み込めたら実寸の縦横比を見て、正方形に近い画布だけ拡大表示のクラスを付ける(縦長の写真はそのまま)
-        const markSquare = () => {
-          const w = img.naturalWidth, h = img.naturalHeight;
-          if (w && h && w / h >= MAT_SQUARE_MIN_RATIO) el.classList.add('mat-img-square');
-        };
-        img.addEventListener('load', markSquare);
+        // 表示用の画像が読み込めたら、被写体の大きさを測って倍率を決める(1回だけ)
+        let zoomed = false;
+        const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg); };
+        img.addEventListener('load', zoom);
         loadImgWithRetry(img, gridImg, () => {
-          el.classList.remove('mat-img-square');
+          el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
           const sw = document.createElement('div');
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
           img.replaceWith(sw);
         });
-        if (img.complete) markSquare(); // キャッシュ済みで、すでに読み込み終わっている場合
+        if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
         el.appendChild(img);
       } else {
         const sw = document.createElement('div');
