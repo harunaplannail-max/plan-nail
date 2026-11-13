@@ -3970,13 +3970,28 @@ function renderGuests() {
   });
 }
 // 画像だけを大きく見るライトボックス(ゲスト詳細は閉じずに、パネルの上に重ねて表示する)
+// Drive(lh3)画像の拡大表示用URL(大きめサイズ)
+function imgHiResUrl(src) {
+  return src.indexOf('googleusercontent.com') !== -1 ? src.replace(/=w\d+/, '=w1600') : src;
+}
+let imgLightboxCurrent = '';
 function openImgLightbox(src) {
-  // Drive(lh3)画像は拡大表示用に大きめサイズを要求する
-  if (src.indexOf('googleusercontent.com') !== -1) src = src.replace(/=w\d+/, '=w1600');
-  document.getElementById('imgLightboxImg').src = src;
+  imgLightboxCurrent = src;
+  const img = document.getElementById('imgLightboxImg');
+  // まずギャラリーで読み込み済みの画像を即表示し、高解像度版は裏で読み込んで差し替える(ラグ対策)
+  img.src = src;
   document.getElementById('imgLightbox').style.display = 'flex';
+  const hi = imgHiResUrl(src);
+  if (hi !== src) {
+    const pre = new Image();
+    pre.onload = () => {
+      if (imgLightboxCurrent === src && document.getElementById('imgLightbox').style.display !== 'none') img.src = hi;
+    };
+    pre.src = hi;
+  }
 }
 function closeImgLightbox() {
+  imgLightboxCurrent = '';
   document.getElementById('imgLightbox').style.display = 'none';
   document.getElementById('imgLightboxImg').src = '';
 }
@@ -4013,6 +4028,12 @@ function openGuestDetail(g) {
         if (d.photo) openImgLightbox(d.photo);
       };
       gallery.appendChild(el);
+    });
+    // 拡大表示がすぐ出るよう、高解像度版を先読みしておく
+    works.forEach(d => {
+      if (!d.photo) return;
+      const hi = imgHiResUrl(d.photo);
+      if (hi !== d.photo) { const pre = new Image(); pre.src = hi; }
     });
   }
 
