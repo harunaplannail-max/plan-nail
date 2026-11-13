@@ -2334,6 +2334,11 @@ let ccMoodFilter = 'ALL';
 let ccSortOrder = 'new';
 let ccColorFilter = 'ALL';
 
+// TOY's by INITY は今後あまり取り扱わないため、デフォルト(新しい順)では一覧の末尾に回す
+function isToysMaker(maker) {
+  return String(maker || '').replace(/’/g, "'") === "TOY's by INITY";
+}
+
 // ── 色別フィルター ──
 // 各商材の CSS値(#rrggbb)を HSL に直して、色の系統を自動で決める(Notion側の設定は不要)。
 // 系統の並びと、ボタンのドットに使う代表色。
@@ -3365,6 +3370,10 @@ function renderColorGrids() {
     filtered.sort((a, b) => {
       if (ccSortOrder === 'category') {
         return (a.category||'').localeCompare(b.category||'');
+      }
+      if (ccSortOrder === 'new') {
+        const at = isToysMaker(a.maker) ? 1 : 0, bt = isToysMaker(b.maker) ? 1 : 0;
+        if (at !== bt) return at - bt;
       }
       const ta = a.releaseDate ? new Date(a.releaseDate).getTime() : (a.created ? new Date(a.created).getTime() : 0);
       const tb = b.releaseDate ? new Date(b.releaseDate).getTime() : (b.created ? new Date(b.created).getTime() : 0);
@@ -4810,6 +4819,10 @@ function renderPartsGrid() {
       if (pa == null) return 1;
       if (pb == null) return -1;
       return partsSortOrder === 'price_asc' ? pa - pb : pb - pa;
+    }
+    if (partsSortOrder === 'new') {
+      const at = isToysMaker(a.maker) ? 1 : 0, bt = isToysMaker(b.maker) ? 1 : 0;
+      if (at !== bt) return at - bt;
     }
     const ta = a.releaseDate ? new Date(a.releaseDate).getTime() : (a.created ? new Date(a.created).getTime() : 0);
     const tb = b.releaseDate ? new Date(b.releaseDate).getTime() : (b.created ? new Date(b.created).getTime() : 0);
