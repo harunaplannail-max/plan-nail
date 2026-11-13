@@ -1666,6 +1666,12 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
   </div>
 </div>
 
+<!-- IMAGE LIGHTBOX(画像だけを大きく見る。ゲスト詳細の上に重ねる) -->
+<div id="imgLightbox" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(10,10,10,.96);align-items:center;justify-content:center;" onclick="if(event.target===this)closeImgLightbox()">
+  <button onclick="closeImgLightbox()" style="position:absolute;top:18px;right:18px;color:#fff;background:none;border:none;font-size:1.8rem;line-height:1;cursor:pointer;z-index:1;">×</button>
+  <img id="imgLightboxImg" src="" alt="" style="max-width:94vw;max-height:92vh;object-fit:contain;display:block;">
+</div>
+
 <!-- NEWS DETAIL OVERLAY -->
 <div id="newsDetailOverlay" class="cd-overlay" onclick="if(event.target===this)closeNewsDetail()">
   <div class="cd-panel">
@@ -3780,12 +3786,6 @@ function closeColorDetail() {
   clearInterval(cdTypeTimer);
   document.getElementById('colorDetailOverlay').classList.remove('open');
   currentDetailItem = null;
-  if (guestDetailBack) {
-    // ゲスト詳細から開いた場合は、閉じたらゲスト詳細に戻す
-    const gg = guestDetailBack;
-    guestDetailBack = null;
-    openGuestDetail(gg);
-  }
 }
 
 // ── シリーズポップアップ(メーカーのシリーズもの一覧) ──
@@ -3959,8 +3959,17 @@ function renderGuests() {
     wrap.appendChild(el);
   });
 }
-// ゲスト詳細の作品から共通詳細を開いた時、詳細を閉じたら戻れるよう戻り先を覚える
-let guestDetailBack = null;
+// 画像だけを大きく見るライトボックス(ゲスト詳細は閉じずに、パネルの上に重ねて表示する)
+function openImgLightbox(src) {
+  // Drive(lh3)画像は拡大表示用に大きめサイズを要求する
+  if (src.indexOf('googleusercontent.com') !== -1) src = src.replace(/=w\d+/, '=w1600');
+  document.getElementById('imgLightboxImg').src = src;
+  document.getElementById('imgLightbox').style.display = 'flex';
+}
+function closeImgLightbox() {
+  document.getElementById('imgLightbox').style.display = 'none';
+  document.getElementById('imgLightboxImg').src = '';
+}
 function openGuestDetail(g) {
   document.getElementById('guestPhoto').src = g.photo || '';
   document.getElementById('guestPhoto').style.display = g.photo ? 'block' : 'none';
@@ -3990,11 +3999,8 @@ function openGuestDetail(g) {
         ? '<img class="guest-gallery-img" loading="lazy" decoding="async" src="'+d.photo+'" alt="'+d.name+'"><span class="guest-gallery-label">'+d.name+'</span>'
         : '<div class="design-emoji-placeholder"><div class="nail-emoji">💅</div></div><span class="guest-gallery-label">'+d.name+'</span>';
       el.onclick = () => {
-        // シリーズ/お気に入りと同じ作法: 親オーバーレイを閉じてから共通詳細を開く
-        // (両方 cd-overlay で同じ z-index のため、開いたまま重ねると詳細が下に隠れる)
-        guestDetailBack = g;
-        closeGuestDetail();
-        openColorDetail({...d, __src:'design'});
+        // 詳細カードではなく画像だけを大きく表示する(ゲスト詳細は開いたまま、上に重ねる)
+        if (d.photo) openImgLightbox(d.photo);
       };
       gallery.appendChild(el);
     });
