@@ -406,7 +406,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .guest-gallery-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none;
   margin:0 -20px;padding-left:20px;padding-right:20px;}
 .guest-gallery-scroll::-webkit-scrollbar{display:none;}
-.guest-gallery-card{flex:0 0 auto;width:140px;aspect-ratio:3/4;border-radius:12px;position:relative;overflow:hidden;
+.guest-gallery-card{flex:0 0 auto;width:140px;aspect-ratio:3/4;border-radius:12px;position:relative;overflow:hidden;cursor:pointer;
   box-shadow:0 8px 18px rgba(0,0,0,.35);}
 .guest-gallery-img{width:100%;height:100%;object-fit:cover;display:block;}
 .guest-gallery-label{position:absolute;bottom:8px;left:8px;right:8px;font-size:.6rem;color:#fff;
@@ -3780,6 +3780,12 @@ function closeColorDetail() {
   clearInterval(cdTypeTimer);
   document.getElementById('colorDetailOverlay').classList.remove('open');
   currentDetailItem = null;
+  if (guestDetailBack) {
+    // ゲスト詳細から開いた場合は、閉じたらゲスト詳細に戻す
+    const gg = guestDetailBack;
+    guestDetailBack = null;
+    openGuestDetail(gg);
+  }
 }
 
 // ── シリーズポップアップ(メーカーのシリーズもの一覧) ──
@@ -3953,6 +3959,8 @@ function renderGuests() {
     wrap.appendChild(el);
   });
 }
+// ゲスト詳細の作品から共通詳細を開いた時、詳細を閉じたら戻れるよう戻り先を覚える
+let guestDetailBack = null;
 function openGuestDetail(g) {
   document.getElementById('guestPhoto').src = g.photo || '';
   document.getElementById('guestPhoto').style.display = g.photo ? 'block' : 'none';
@@ -3981,6 +3989,13 @@ function openGuestDetail(g) {
       el.innerHTML = d.photo
         ? '<img class="guest-gallery-img" loading="lazy" decoding="async" src="'+d.photo+'" alt="'+d.name+'"><span class="guest-gallery-label">'+d.name+'</span>'
         : '<div class="design-emoji-placeholder"><div class="nail-emoji">💅</div></div><span class="guest-gallery-label">'+d.name+'</span>';
+      el.onclick = () => {
+        // シリーズ/お気に入りと同じ作法: 親オーバーレイを閉じてから共通詳細を開く
+        // (両方 cd-overlay で同じ z-index のため、開いたまま重ねると詳細が下に隠れる)
+        guestDetailBack = g;
+        closeGuestDetail();
+        openColorDetail({...d, __src:'design'});
+      };
       gallery.appendChild(el);
     });
   }
