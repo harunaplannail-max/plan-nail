@@ -728,7 +728,7 @@ module.exports = async (req, res) => {
           specialty: getProp(p, '肩書き'),
           bio: getProp(p, '自己紹介'),
           photo: getProp(p, '写真'),
-          instagram: getProp(p, 'Instagramリンク'),
+          instagram: getProp(p, 'Instagram') || getProp(p, 'Instagramリンク'),
           booking: getProp(p, '予約リンク'),
         };
       }));
