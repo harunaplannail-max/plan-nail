@@ -301,6 +301,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .cd-video-frame{width:100%;flex-shrink:0;scroll-snap-align:center;aspect-ratio:3/4;max-height:60vh;border:none;display:block;background:#000;}
 .cd-img-dots{display:flex;justify-content:center;gap:6px;padding:8px 0 0;}
 .cd-img-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.25);}
+/* パーツ詳細の「実際の大きさ」: サムネイルは52px/mm・画布600px(=約11.54mm幅)で焼かれているため、
+   CSSのmm指定で幅11.54mmに表示すれば石が実寸で見える */
+.cd-true-size{display:none;flex-direction:column;align-items:center;gap:7px;padding:14px 0 0;}
+.cd-true-size-label{font-size:.68rem;letter-spacing:.14em;color:var(--gray-mid);}
+.cd-true-size-box{background:rgba(255,255,255,.05);border-radius:10px;padding:10px 16px;display:flex;align-items:center;justify-content:center;}
+.cd-true-size-box img{width:11.54mm;height:auto;display:block;}
+.cd-true-size-cap{font-size:.72rem;color:var(--white);}
 .cd-swatch{width:100%;aspect-ratio:1;flex-shrink:0;scroll-snap-align:center;}
 .cd-body{padding:20px 20px 32px;}
 
@@ -1608,6 +1615,11 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
       <div class="cd-fav-heart-wrap" id="cdFavHeartWrap"></div>
     </div>
     <div class="cd-img-dots" id="cdImgDots"></div>
+    <div class="cd-true-size" id="cdTrueSize">
+      <span class="cd-true-size-label">実際の大きさ</span>
+      <div class="cd-true-size-box"><img id="cdTrueSizeImg" alt="実際の大きさ"></div>
+      <span class="cd-true-size-cap" id="cdTrueSizeCap"></span>
+    </div>
     <div class="cd-body">
       <h3 id="cdName" class="cd-name"></h3>
       <p id="cdDesc" class="cd-desc"></p>
@@ -3568,6 +3580,20 @@ function openColorDetail(c, fromHistory) {
   if (c.size) { sizeRow.style.display='flex'; document.getElementById('cdSize').textContent = c.size + 'mm'; }
   else { sizeRow.style.display='none'; }
 
+  // 「実際の大きさ」ブロック: サイズ(mm)はパーツにしか無い項目なので、これがある時だけ出す。
+  // サムネイルは52px/mm・画布600px幅(=約11.54mm)で焼かれているため、CSS側は .cd-true-size-box img の
+  // width:11.54mm で実寸表示になる(サイズ未入力のパーツ・商材・デザイン等では出さない)
+  const trueSizeEl = document.getElementById('cdTrueSize');
+  const trueSizeMetric = c.size != null ? extractSizeMetric(c.size) : null;
+  const trueSizeSrc = c.thumb || c.thumbSmall || '';
+  if (trueSizeMetric != null && trueSizeMetric > 0 && trueSizeSrc) {
+    trueSizeEl.style.display = 'flex';
+    loadImgWithRetry(document.getElementById('cdTrueSizeImg'), trueSizeSrc, () => { trueSizeEl.style.display = 'none'; });
+    document.getElementById('cdTrueSizeCap').textContent = '約' + c.size + 'mm';
+  } else {
+    trueSizeEl.style.display = 'none';
+  }
+
   const priceRow = document.getElementById('cdPriceRow');
   if (SHOW_PARTS_PRICE && c.price) { priceRow.style.display='flex'; const priceStr = String(c.price); document.getElementById('cdPrice').textContent = priceStr.startsWith('¥') ? priceStr : ('¥' + priceStr); }
   else { priceRow.style.display='none'; }
@@ -4811,6 +4837,13 @@ function buildPartsFilters() {
   };
 }
 
+// PARTSチャート専用の表示倍率: 実寸比(partDisplayScale)の大小関係はそのままに全体を約2倍へ
+// 底上げし、カードからはみ出さないよう上限0.96で止める。
+// (シリーズポップアップ・Play・NEW IN等の他ビューには効かせない)
+function chartPartScale(sizeMm) {
+  return Math.min(0.96, partDisplayScale(sizeMm) * 2);
+}
+
 function renderPartsGrid() {
   const grid = document.getElementById('parts-grid');
   if (!grid) return;
@@ -4883,12 +4916,12 @@ function renderPartsGrid() {
     const fbSeriesCard = !!(p.series && p.series.startsWith('FB '));
     if (fbSeriesCard) {
       el.classList.add('sized');
-      el.style.setProperty('--pscale', partDisplayScale(10));
+      el.style.setProperty('--pscale', chartPartScale(10));
     } else if (sizeNum != null && sizeNum > 0) {
       // カード(=ネイルチップ約16mm)に対する実寸比で、中の画像だけを縮める。
       // カード自体は縮めないので、並びが崩れず、バッジも切れない。
       el.classList.add('sized');
-      el.style.setProperty('--pscale', partDisplayScale(sizeNum));
+      el.style.setProperty('--pscale', chartPartScale(sizeNum));
     }
     const gridImg = p.thumbSmall || p.thumb || '';
     if (gridImg) {
