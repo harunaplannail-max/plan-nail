@@ -2334,9 +2334,10 @@ let ccMoodFilter = 'ALL';
 let ccSortOrder = 'new';
 let ccColorFilter = 'ALL';
 
-// TOY's by INITY は今後あまり取り扱わないため、デフォルト(新しい順)では一覧の末尾に回す
-function isToysMaker(maker) {
-  return String(maker || '').replace(/’/g, "'") === "TOY's by INITY";
+// TOY's by INITY / INITY は今後あまり取り扱わないため、デフォルト(新しい順)では一覧の末尾に回す
+function isDemotedMaker(maker) {
+  const m = String(maker || '').replace(/’/g, "'");
+  return m === "TOY's by INITY" || m === 'INITY';
 }
 
 // ── 色別フィルター ──
@@ -3372,7 +3373,7 @@ function renderColorGrids() {
         return (a.category||'').localeCompare(b.category||'');
       }
       if (ccSortOrder === 'new') {
-        const at = isToysMaker(a.maker) ? 1 : 0, bt = isToysMaker(b.maker) ? 1 : 0;
+        const at = isDemotedMaker(a.maker) ? 1 : 0, bt = isDemotedMaker(b.maker) ? 1 : 0;
         if (at !== bt) return at - bt;
       }
       const ta = a.releaseDate ? new Date(a.releaseDate).getTime() : (a.created ? new Date(a.created).getTime() : 0);
@@ -4821,7 +4822,7 @@ function renderPartsGrid() {
       return partsSortOrder === 'price_asc' ? pa - pb : pb - pa;
     }
     if (partsSortOrder === 'new') {
-      const at = isToysMaker(a.maker) ? 1 : 0, bt = isToysMaker(b.maker) ? 1 : 0;
+      const at = isDemotedMaker(a.maker) ? 1 : 0, bt = isDemotedMaker(b.maker) ? 1 : 0;
       if (at !== bt) return at - bt;
     }
     const ta = a.releaseDate ? new Date(a.releaseDate).getTime() : (a.created ? new Date(a.created).getTime() : 0);
