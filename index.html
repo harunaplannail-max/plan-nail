@@ -4839,9 +4839,16 @@ function buildPartsFilters() {
 
 // PARTSチャート専用の表示倍率: 実寸比(partDisplayScale)の大小関係はそのままに全体を約2倍へ
 // 底上げし、カードからはみ出さないよう上限0.96で止める。
+// スタッズ系・チャトン系はそれでも小さすぎるため、チャートだけ最低0.45まで底上げする(floor=true)。
 // (シリーズポップアップ・Play・NEW IN等の他ビューには効かせない)
-function chartPartScale(sizeMm) {
-  return Math.min(0.96, partDisplayScale(sizeMm) * 2);
+function chartPartScale(sizeMm, floor) {
+  const s = partDisplayScale(sizeMm) * 2;
+  return Math.min(0.96, floor ? Math.max(0.45, s) : s);
+}
+// チャートで底上げ対象にする系統: スタッズ/中抜きスタッズのシリーズ、またはチャトンを含むシリーズ名・商品名
+function isStudsOrChaton(p) {
+  const s = p.series || '', n = p.name || '';
+  return s === 'スタッズ' || s === '中抜きスタッズ' || s.includes('チャトン') || n.includes('チャトン');
 }
 
 function renderPartsGrid() {
@@ -4921,7 +4928,7 @@ function renderPartsGrid() {
       // カード(=ネイルチップ約16mm)に対する実寸比で、中の画像だけを縮める。
       // カード自体は縮めないので、並びが崩れず、バッジも切れない。
       el.classList.add('sized');
-      el.style.setProperty('--pscale', chartPartScale(sizeNum));
+      el.style.setProperty('--pscale', chartPartScale(sizeNum, isStudsOrChaton(p)));
     }
     const gridImg = p.thumbSmall || p.thumb || '';
     if (gridImg) {
