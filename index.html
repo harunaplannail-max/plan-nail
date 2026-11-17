@@ -298,11 +298,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .cd-badge-corner.show{display:block;}
 .cd-img-wrap img{width:100%;flex-shrink:0;scroll-snap-align:center;height:auto;max-height:32vh;object-fit:contain;display:block;
   filter:drop-shadow(0 10px 20px rgba(0,0,0,.3)) drop-shadow(0 3px 28px rgba(0,0,0,.2));}
+/* パーツ詳細のヒーローだけ小さめに: 実物が数mmのパーツを画面幅いっぱいに拡大すると
+   大きさの感覚が狂うため、左右に余白を取り実質60%幅で見せる(box-sizing:border-box前提。
+   スライド自体の幅は100%のままなので、横スクロール/ドットの挙動は変わらない) */
+.cd-img-wrap.cd-parts-hero img{padding-left:20%;padding-right:20%;}
 .cd-video-frame{width:100%;flex-shrink:0;scroll-snap-align:center;aspect-ratio:3/4;max-height:60vh;border:none;display:block;background:#000;}
 .cd-img-dots{display:flex;justify-content:center;gap:6px;padding:8px 0 0;}
 .cd-img-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.25);}
-/* パーツ詳細の「実際の大きさ」: サムネイルは52px/mm・画布600px(=約11.54mm幅)で焼かれているため、
-   CSSのmm指定で幅11.54mmに表示すれば石が実寸で見える */
+/* パーツ詳細の「実際の大きさ」: 既定は52px/mm・画布600px前提の幅11.54mm表示。
+   ただし切り抜きによって石の入り方が前提と違うため、表示時に石の実範囲(alpha bbox)を
+   測って、JS側(probeSubjectBox / trueSizeImgWidthMm)が画像幅を実寸へ補正する */
 .cd-true-size{display:none;flex-direction:column;align-items:center;gap:8px;padding:16px 20px 4px;}
 .cd-true-size-head{display:flex;align-items:baseline;gap:10px;}
 .cd-true-size-label{font-size:.72rem;letter-spacing:.14em;color:var(--gray-mid);}
@@ -3364,6 +3369,48 @@ function applyMatZoom(el, src) {
   probe.onerror = () => { matZoomCache.set(src, 1); }; // 読めなければ拡大しない(エラーは出さない)
   probe.src = src;
 }
+// ── 「実際の大きさ」欄用: 画像内の被写体の実範囲(alpha bbox)を測る ──
+// サムネイルは本来52px/mm・画布600pxで焼かれる前提だが、切り抜きによっては石が
+// 画布の中で前提より大きく(小さく)入っていて、固定幅11.54mmでは実寸とズレる。
+// そこで表示する画像そのものの不透明範囲を測り、「石の幅が実寸になる」表示幅を逆算する。
+const subjectBoxCache = new Map(); // URL → {l,r,t,b,nw,nh} | null(測定不可・補正対象外)
+function probeSubjectBox(src, cb) {
+  if (subjectBoxCache.has(src)) { cb(subjectBoxCache.get(src)); return; }
+  const probe = new Image();
+  probe.crossOrigin = 'anonymous';
+  probe.decoding = 'async';
+  probe.onload = () => {
+    const box = matSubjectBox(probe);
+    let rec = null;
+    if (box) {
+      // 四辺まで不透明が届く画像は「全面写真」(商材画像など)で、被写体の範囲が
+      // 分からないので補正対象外にする。四隅が透明な切り抜きは、石が画布いっぱい
+      // でも bbox をそのまま信じる(例: 画布いっぱいのドーム型スタッズ)。
+      const edgeToEdge = box.l <= 0.001 && box.t <= 0.001 && box.r >= 0.999 && box.b >= 0.999;
+      if (!edgeToEdge) rec = { l: box.l, r: box.r, t: box.t, b: box.b, nw: probe.naturalWidth, nh: probe.naturalHeight };
+    }
+    subjectBoxCache.set(src, rec);
+    cb(rec);
+  };
+  probe.onerror = () => { subjectBoxCache.set(src, null); cb(null); };
+  probe.src = src;
+}
+// サイズ表記と測定した bbox から、実寸表示用の画像幅(mm)を決める。
+// 数字が2つある表記(例 10×3)は石の向きに合わせて幅側の数字を選ぶ:
+// 横長の石なら大きい方、縦長の石なら小さい方が「幅」。決められない/測れないときは null。
+function trueSizeImgWidthMm(sizeVal, rec) {
+  if (!rec || !(rec.nw > 0)) return null;
+  const nums = (String(sizeVal).match(/\d+(\.\d+)?/g) || []).map(Number).filter(v => v > 0);
+  if (!nums.length) return null;
+  const bwPx = (rec.r - rec.l) * rec.nw, bhPx = (rec.b - rec.t) * rec.nh;
+  if (!(bwPx > 0) || !(bhPx > 0)) return null;
+  const widthMm = nums.length >= 2
+    ? (bwPx >= bhPx ? Math.max(nums[0], nums[1]) : Math.min(nums[0], nums[1]))
+    : nums[0];
+  const mm = widthMm * rec.nw / bwPx; // 石の幅が widthMm になる画像全体の表示幅
+  if (!isFinite(mm) || mm <= 0) return null;
+  return Math.min(40, Math.max(0.5, mm)); // 異常値だけ丸める(0.8mm級の極小パーツは画像幅も1mm未満になり得る)
+}
 function renderColorGrids() {
   // カテゴリのタブ名(HTMLのid用)と、Notionのカテゴリ名の対応。
   // グリッターは「ラメ入りジェル(Glitter Gel)」と「粉ラメ(Glitter Powder)」の2つに分けている。
@@ -3466,6 +3513,12 @@ function openColorDetail(c, fromHistory) {
   const wrap = document.getElementById('cdImgWrap');
   const dots = document.getElementById('cdImgDots');
   wrap.innerHTML = ''; wrap.style.height = '';
+  // パーツのヒーロー写真だけ小さめに見せる(実物が数mmのものを画面いっぱいに
+  // 広げると大きさの感覚が狂うため)。素材・トレンド・デザインは従来どおり。
+  // (トレンド/デザインにはサイズ項目が無いので、サイズ有無の判定で混ざらない)
+  const isPartDetail = c._src === 'parts' || c.__src === 'part' ||
+    (c.size != null && extractSizeMetric(c.size) != null);
+  wrap.classList.toggle('cd-parts-hero', isPartDetail);
   // 画像の入れ物の高さを、いま見ている1枚の高さに合わせる(縦長・横長がまざっても、下に余白が残らないように)
   if (!wrap.__fitBound) { wrap.__fitBound = true;
     const fit = () => { const kids = [...wrap.children].filter(k => k.matches('img, iframe, .cd-ig-slide'));
@@ -3585,8 +3638,11 @@ function openColorDetail(c, fromHistory) {
   else { sizeRow.style.display='none'; }
 
   // 「実際の大きさ」欄: サイズ(mm)はパーツにしか無い項目なので、サイズに数字が含まれる時だけ出す。
-  // サムネイルは52px/mm・画布600px幅(=約11.54mm)で焼かれているため、CSS側は .cd-true-size-box img の
-  // width:11.54mm で実寸表示になる。下の10mmバーもCSSのmm指定で、画面の個体差があっても目安にできる。
+  // CSS側の既定幅11.54mmは「サムネイルが52px/mm・画布600pxで焼かれている」前提の値だが、
+  // 切り抜きによっては石の入り方が前提と違い、そのままだと実寸とズレる。そこで読み込めた
+  // 画像の石の実範囲(alpha bbox)を測り、石の幅が実寸になるよう表示幅を補正する
+  // (probeSubjectBox / trueSizeImgWidthMm)。測れなければ既定幅のまま。
+  // 下の10mmバーもCSSのmm指定で、画面の個体差があっても目安にできる。
   // 画像が読み込めなくても欄自体は消さない(サイズ表記とバーだけでも大きさは伝わる)。
   const trueSizeEl = document.getElementById('cdTrueSize');
   const trueSizeMetric = c.size != null ? extractSizeMetric(c.size) : null;
@@ -3597,9 +3653,25 @@ function openColorDetail(c, fromHistory) {
     const tsCandidates = [c.thumb, c.thumbSmall, (c.images && c.images.length ? c.images[0] : ''), c.material, c.photo]
       .filter((u, i, a) => u && a.indexOf(u) === i);
     tsImg.style.display = '';
+    tsImg.style.width = ''; // 前のアイテムの実寸補正が残らないよう、まず既定幅へ戻す
+    const tsToken = (tsImg.__tsToken || 0) + 1;
+    tsImg.__tsToken = tsToken;
+    // 読み込みが成功するたび(フォールバックで差し替わった場合も)、表示中URLの
+    // 石の範囲を測り直して幅を補正する
+    const tsOnLoad = () => {
+      if (tsImg.__tsToken !== tsToken) return;
+      const loadedSrc = tsImg.currentSrc || tsImg.src;
+      if (!loadedSrc) return;
+      probeSubjectBox(loadedSrc, rec => {
+        if (tsImg.__tsToken !== tsToken) return;
+        const mm = trueSizeImgWidthMm(c.size, rec);
+        if (mm != null) tsImg.style.width = mm.toFixed(2) + 'mm';
+      });
+    };
+    if (tsImg.__tsLoadHandler) tsImg.removeEventListener('load', tsImg.__tsLoadHandler);
+    tsImg.__tsLoadHandler = tsOnLoad;
+    tsImg.addEventListener('load', tsOnLoad);
     if (tsCandidates.length) {
-      const tsToken = (tsImg.__tsToken || 0) + 1;
-      tsImg.__tsToken = tsToken;
       let tsIdx = 0;
       const tsTryNext = () => {
         if (tsImg.__tsToken !== tsToken) return; // 別の詳細を開き直していたら古い読み込みは捨てる
@@ -3608,6 +3680,7 @@ function openColorDetail(c, fromHistory) {
         else tsImg.style.display = 'none'; // 画像だけ諦める(欄は残す)
       };
       loadImgWithRetry(tsImg, tsCandidates[0], tsTryNext);
+      if (tsImg.complete && tsImg.naturalWidth) tsOnLoad(); // キャッシュ済みで load が発火しない場合
     } else {
       tsImg.style.display = 'none';
     }
