@@ -4949,9 +4949,9 @@ function chartStoneTarget(sizeMm) {
 // 「画布ではなく石」が目標サイズになるよう画像を拡縮し、石の中心をカード中心へ寄せる。
 // 測れない画像(全面写真など probeSubjectBox が null)は何もせず、
 // --pscale の従来表示(フォールバック)のままにする。
-function applyChartStoneScale(el, img, src, sizeMm) {
+function applyChartStoneScale(el, img, src, sizeMm, targetOverride) {
   if (!src || !(sizeMm > 0)) return;
-  const target = chartStoneTarget(sizeMm);
+  const target = (targetOverride != null) ? targetOverride : chartStoneTarget(sizeMm);
   probeSubjectBox(src, rec => {
     if (!rec) return; // 測定不可 → フォールバック
     if (img.parentElement !== el) return; // 画像が差し替え/破棄されていたら触らない
@@ -5055,6 +5055,8 @@ function renderPartsGrid() {
     // フラットバックのプレシオサ(FB〜のシリーズ)は、実寸のままでは石が小さすぎて
     // 見えないため、FBのカード(畳んだシリーズカード・単体どちらも)10mm相当で大きめに表示する
     const fbSeriesCard = !!(p.series && p.series.startsWith('FB '));
+    // FB MAXIMAシリーズだけは大きすぎたため、石の目標を0.75に落とす(他のFBは10mm相当=0.96のまま)
+    const fbMaximaCard = !!(p.series && p.series.startsWith('FB MAXIMA'));
     if (fbSeriesCard) {
       el.classList.add('sized');
       el.style.setProperty('--pscale', chartPartScale(10));
@@ -5077,7 +5079,7 @@ function renderPartsGrid() {
       el.appendChild(img);
       // チャートでは画布ではなく石そのものが目標サイズになるよう bbox で正規化する
       // (FBシリーズカードは従来どおり10mm相当が目標。測れなければ --pscale のまま)
-      if (fbSeriesCard) applyChartStoneScale(el, img, gridImg, 10);
+      if (fbSeriesCard) applyChartStoneScale(el, img, gridImg, 10, fbMaximaCard ? 0.75 : null);
       else if (sizeNum != null && sizeNum > 0) applyChartStoneScale(el, img, gridImg, sizeNum);
     } else {
       const sw = document.createElement('div');
