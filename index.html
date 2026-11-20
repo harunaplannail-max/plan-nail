@@ -2260,6 +2260,9 @@ async function loadNotionData() {
     hideLoading();
   }
 }
+// トップページに載せるカラーは loade / CLETO から選ぶ(カラーチャートの大枠と同じ方針)
+function isTopMaker(m) { return !!m && (m.maker === 'loade' || m.maker === 'CLETO'); }
+
 // ── 新入荷ポップアップ(ホーム表示の3秒後、1回の訪問につき1度だけ) ──
 function scheduleNewInPopup() {
   // 1日1回だけ出す(端末に、最後に出した日付を保存)
@@ -2270,6 +2273,11 @@ function scheduleNewInPopup() {
     .filter(isNewInItem)
     .sort((a, b) => daysSince(a.arrivalDate || a.created) - daysSince(b.arrivalDate || b.created));
   if (!items.length) return;
+  // プレビュー3件に出すカラーは loade / CLETO のみ(パーツは従来どおり。件数表示は全体の items のまま)
+  const previewItems = notionMaterials.filter(isTopMaker).concat(notionParts)
+    .filter(m => !scatterIsExcludedCategory(m.category))
+    .filter(isNewInItem)
+    .sort((a, b) => daysSince(a.arrivalDate || a.created) - daysSince(b.arrivalDate || b.created));
   setTimeout(() => {
     // 何かのオーバーレイを開いている最中なら出さない(邪魔しない)
     if (document.querySelector('.browse-overlay.open, .cd-overlay.open')) return;
@@ -2278,7 +2286,7 @@ function scheduleNewInPopup() {
     const releases = items.filter(isNewRelease).length;
     document.getElementById('newInPopCount').textContent = '新入荷 ' + items.length + (releases ? '（うち新作 ' + releases + '）' : '');
     box.innerHTML = '';
-    items.slice(0, 3).forEach(it => {
+    previewItems.slice(0, 3).forEach(it => {
       const d = document.createElement('div');
       const sw = document.createElement('i');
       const img = it.thumbSmall || it.thumb;
@@ -2711,20 +2719,21 @@ function initFloatWindow(wrapId, canvasId, pool, opts) {
 }
 
 function initHeroWindow() {
-  const pool = [...notionMaterials, ...notionParts, ...notionTrends]
+  // 窓に漂うカラーは loade / CLETO から(パーツ・トレンドは従来どおり全件)
+  const pool = [...notionMaterials.filter(isTopMaker), ...notionParts, ...notionTrends]
     .filter(x => x && !scatterIsExcludedCategory(x.category))
     .map(x => x.thumbSmall || x.thumb);
   initFloatWindow('heroWindow', 'heroCanvas', pool, { heavy: true });
 }
 
 // COLORS/PARTSエントリー(Liquid Glassラミネート)の中身をデータから埋める。
-// 代表チップ = 最新アイテムのサムネイル、サブテキスト = 件数とカテゴリ概要。
+// 代表チップ = loade / CLETO の先頭アイテムのサムネイル、サブテキスト = 件数とカテゴリ概要。
 // 旧・小窓のフロートアニメーションは廃止(常時アニメーションが減る分、軽量化にもなる)。
 function initColorWindow() {
   const sw = document.getElementById('colorLamSw');
   const sub = document.getElementById('colorLamSub');
   if (!sw || !sub) return;
-  const first = notionMaterials.find(m => m && (m.thumbSmall || m.thumb));
+  const first = notionMaterials.find(m => m && isTopMaker(m) && (m.thumbSmall || m.thumb));
   if (first) sw.style.backgroundImage = `url('${first.thumbSmall || first.thumb}')`;
   const cats = [...new Set(notionMaterials.map(m => (m.category||'').trim()).filter(Boolean))];
   sub.textContent = `${notionMaterials.length} ITEMS` + (cats.length ? ` / ${cats.slice(0,3).join('・').toUpperCase()}` : '');
