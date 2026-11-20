@@ -162,6 +162,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 
 /* COLOR GRID */
 .color-grid{display:grid;grid-template-columns:repeat(var(--cc-cols,6),1fr);gap:6px;}
+/* COLORS: NEWバッジの推し色を、発見タブのように2×2で大きく見せる(renderColorGridsが
+   .featured を付ける)。dense で、大きいカードの脇にできた1マスの隙間を後続の通常
+   カードで埋める。対象はカラーチャートの7グリッドだけ(PARTS/NEW IN等には付けない) */
+#color-ALL-grid,#color-Gel-grid,#color-Chrome-grid,#color-GlitterGel-grid,#color-GlitterPowder-grid,#color-Magnet-grid,#color-Gradation-grid{grid-auto-flow:dense;}
+.color-card.featured{grid-column:span 2;grid-row:span 2;contain-intrinsic-size:286px 394px;}
 
 /* ── POPULAR(直近30日の閲覧数で自動選出する人気カラー) ── */
 .featured-shelf{margin-bottom:26px;}
@@ -3493,9 +3498,15 @@ function renderColorGrids() {
       return ccSortOrder === 'old' ? ta - tb : tb - ta;
     });
     if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
+    // 推し色の大きな表示(発見タブ風2×2): NEWバッジの色のうち、最初に現れたものを大きくし、
+    // 以降は直前の大きなカードから12枚以上あいたNEWだけを大きくする(他は通常サイズ)。
+    // 並び順(フィルター+並べ替え後のこのリスト)だけで決まるため、再描画しても配置は安定する。
+    let lastFeaturedIdx = -1;
     filtered.forEach((c, cardIdx) => {
       const el = document.createElement('div');
       el.className = 'color-card';
+      const isFeatured = hasBadge(c, 'NEW') && (lastFeaturedIdx < 0 || cardIdx - lastFeaturedIdx >= 12);
+      if (isFeatured) { el.classList.add('featured'); lastFeaturedIdx = cardIdx; }
       // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
       // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
       const gridImg = c.thumbSmall || c.thumb || '';
@@ -3513,7 +3524,7 @@ function renderColorGrids() {
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
           img.replaceWith(sw);
-        }, (key === 'ALL' && cardIdx < 12) ? { eager: true } : null);
+        }, ((key === 'ALL' && cardIdx < 12) || isFeatured) ? { eager: true } : null);
         if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
         el.appendChild(img);
       } else {
