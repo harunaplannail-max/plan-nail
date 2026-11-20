@@ -6581,6 +6581,11 @@ function renderNews() {
   const activeOther = withMeta.filter(x => !x.isFuture && !x.isTbd && !x.isEnded).sort((a, b) => b.dateStr.localeCompare(a.dateStr));
   const past = withMeta.filter(x => x.isEnded).sort((a, b) => b.dateStr.localeCompare(a.dateStr));
   const ordered = [...upcoming, ...tbd, ...activeOther, ...past];
+  // 先頭固定: NEOPOGOTOWN 文化祭 2026 は終了済みでも常に一番前に表示する(Haruna指定 2026-11-20)。
+  // ページIDで照合し、取れない場合は名前で照合する。他の並び順には影響しない。
+  const PIN_FIRST_EVENT_ID = '402db125-c0b3-81ca-8a10-f5f81c6d363c';
+  const pinIdx = ordered.findIndex(x => x.ev.id === PIN_FIRST_EVENT_ID || x.ev.name === 'NEOPOGOTOWN 文化祭 2026');
+  if (pinIdx > 0) { const pinItem = ordered.splice(pinIdx, 1)[0]; ordered.unshift(pinItem); }
 
   const tagClass = { EVENT: 'news-tag-event', PRODUCT: 'news-tag-product', NEWS: 'news-tag-news' };
 
