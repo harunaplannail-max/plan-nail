@@ -2103,6 +2103,28 @@ function prepGridImg(img, url) {
   if (url && url.includes('lh3.googleusercontent.com')) img.crossOrigin = 'anonymous';
 }
 
+// グリッド専用の読み込み開始制御。ネイティブ lazy は発火距離がブラウザ任せで
+// 広く、開いた瞬間にほぼ全件が走り出して先頭表示が競合で遅くなるため、
+// チャート系グリッドでは IntersectionObserver で「画面に近づいたカードだけ」
+// 読み込みを始める(詳細カルーセルの observeCdLazyImg と同じ考え方)。
+const gridImgIO = ('IntersectionObserver' in window) ? new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    gridImgIO.unobserve(e.target);
+    const img = e.target;
+    const src = img.dataset.gridSrc;
+    delete img.dataset.gridSrc;
+    if (src) loadImgWithRetry(img, src, img.__gridFail || null);
+  });
+}, { rootMargin: '600px 0px', threshold: 0.01 }) : null;
+function loadGridImg(img, src, onFinalFail, opts) {
+  img.decoding = 'async';
+  if ((opts && opts.eager) || !gridImgIO) { loadImgWithRetry(img, src, onFinalFail, opts); return; }
+  img.dataset.gridSrc = src;
+  img.__gridFail = onFinalFail;
+  gridImgIO.observe(img);
+}
+
 // ── サイトのテーマ着せ替え ──
 // Notionの「サイト設定DB」の「テーマ」セレクトを切り替えるだけで、
 // デプロイなしでサイト全体の配色が変わる(Peps/デコログのスキンのイメージ)。
@@ -3485,7 +3507,7 @@ function renderColorGrids() {
         let zoomed = false;
         const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img); };
         img.addEventListener('load', zoom);
-        loadImgWithRetry(img, gridImg, () => {
+        loadGridImg(img, gridImg, () => {
           el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
           const sw = document.createElement('div');
           sw.className = 'color-card-swatch';
@@ -5118,7 +5140,7 @@ function renderPartsGrid() {
       const img = document.createElement('img');
       img.alt = p.name || '';
       prepGridImg(img, gridImg);
-      loadImgWithRetry(img, gridImg, () => {
+      loadGridImg(img, gridImg, () => {
         const sw = document.createElement('div');
         sw.className = 'color-card-swatch';
         sw.style.background = p.css || '#cccccc';
