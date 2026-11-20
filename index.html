@@ -4939,6 +4939,40 @@ function chartPartScale(sizeMm, floor) {
   const s = partDisplayScale(sizeMm) * 2;
   return Math.min(0.96, floor ? Math.max(0.45, s) : s);
 }
+// PARTSチャート: 「石そのもの」の目標サイズ(セル幅比)。小さい石ほど強く効く
+// FB式 sqrt カーブ ×2 で、最低0.45・上限0.96(スタッズ/チャトンの従来フロア0.45を含む)。
+function chartStoneTarget(sizeMm) {
+  return Math.min(0.96, Math.max(0.45, Math.sqrt(sizeMm * 10) / 11.88 * 2));
+}
+// --pscale は画布(サムネイル全体)を拡縮するため、画布の中で石が占める割合が小さい
+// 小粒は石だけが点になってしまう。そこで石の実範囲(alpha bbox)を測り、
+// 「画布ではなく石」が目標サイズになるよう画像を拡縮し、石の中心をカード中心へ寄せる。
+// 測れない画像(全面写真など probeSubjectBox が null)は何もせず、
+// --pscale の従来表示(フォールバック)のままにする。
+function applyChartStoneScale(el, img, src, sizeMm) {
+  if (!src || !(sizeMm > 0)) return;
+  const target = chartStoneTarget(sizeMm);
+  probeSubjectBox(src, rec => {
+    if (!rec) return; // 測定不可 → フォールバック
+    if (img.parentElement !== el) return; // 画像が差し替え/破棄されていたら触らない
+    const fw = rec.r - rec.l, fh = rec.b - rec.t;
+    if (!(fw > 0) || !(fh > 0) || !(rec.nw > 0) || !(rec.nh > 0)) return;
+    // カードは aspect-ratio 0.72(幅/高さ)。contain で描かれる画像の大きさを
+    // 要素幅=1 として計算し、石の長い方の辺が target になる倍率を求める。
+    const ar = rec.nw / rec.nh;
+    const dw = Math.min(1, ar / 0.72); // 描画幅(要素幅比)
+    const dh = dw / ar;                // 描画高(要素幅比)
+    const longAxis = Math.max(fw * dw, fh * dh);
+    if (!(longAxis > 0)) return;
+    const s = Math.min(8, target / longAxis); // 異常な拡大だけ丸める
+    if (!isFinite(s) || !(s > 0)) return;
+    const dx = ((rec.l + rec.r) / 2 - 0.5) * dw; // 石中心のズレ(要素幅比)
+    const dy = ((rec.t + rec.b) / 2 - 0.5) * dh;
+    const tx = -s * dx * 100;        // translateX は要素幅に対する%
+    const ty = -s * dy * 0.72 * 100; // translateY は要素高さに対する%(高さ=幅/0.72)
+    img.style.transform = 'translate(' + tx.toFixed(2) + '%, ' + ty.toFixed(2) + '%) scale(' + s.toFixed(3) + ')';
+  });
+}
 // NEW IN / OUT OF STOCK のステータス一覧専用の表示倍率: フルサイズのネイルチップと
 // 混在する一覧では実寸比だとパーツが点になって見えないため、チャートより強めに
 // 底上げする(最低0.5・上限0.96)。サイズの無い商材には効かない。
@@ -5041,6 +5075,10 @@ function renderPartsGrid() {
         img.replaceWith(sw);
       });
       el.appendChild(img);
+      // チャートでは画布ではなく石そのものが目標サイズになるよう bbox で正規化する
+      // (FBシリーズカードは従来どおり10mm相当が目標。測れなければ --pscale のまま)
+      if (fbSeriesCard) applyChartStoneScale(el, img, gridImg, 10);
+      else if (sizeNum != null && sizeNum > 0) applyChartStoneScale(el, img, gridImg, sizeNum);
     } else {
       const sw = document.createElement('div');
       sw.className = 'color-card-swatch';
