@@ -162,11 +162,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 
 /* COLOR GRID */
 .color-grid{display:grid;grid-template-columns:repeat(var(--cc-cols,6),1fr);gap:6px;}
-/* COLORS: loade/CLETOの推し色を、発見タブのように2×2で大きく見せる(renderColorGridsが
-   .featured を付ける)。dense で、大きいカードの脇にできた1マスの隙間を後続の通常
-   カードで埋める。対象はカラーチャートの7グリッドだけ(PARTS/NEW IN等には付けない) */
+/* COLORS: loade/CLETOの推し色を、縦長(1列×2行)で大きく見せる(renderColorGridsが
+   .tall を付ける)。チップ画像は縦長なので横には広げず、縦にだけ伸ばす。
+   dense で、縦長カードの脇にできた隙間を後続の通常カードで埋める。
+   対象はカラーチャートの7グリッドだけ(PARTS/NEW IN等には付けない) */
 #color-ALL-grid,#color-Gel-grid,#color-Chrome-grid,#color-GlitterGel-grid,#color-GlitterPowder-grid,#color-Magnet-grid,#color-Gradation-grid{grid-auto-flow:dense;}
-.color-card.featured{grid-column:span 2;grid-row:span 2;contain-intrinsic-size:286px 394px;}
+.color-card.tall{grid-row:span 2;aspect-ratio:auto;contain-intrinsic-size:140px 394px;}
 
 /* ── POPULAR(直近30日の閲覧数で自動選出する人気カラー) ── */
 .featured-shelf{margin-bottom:26px;}
@@ -3521,15 +3522,39 @@ function renderColorGrids() {
       return ccSortOrder === 'old' ? ta - tb : tb - ta;
     });
     if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
-    // 推し色の大きな表示(発見タブ風2×2): loade/CLETOの色のうち、最初に現れたものを大きくし、
-    // 以降は直前の大きなカードから12枚以上あいたものだけを大きくする(他は通常サイズ)。
-    // 並び順(フィルター+並べ替え後のこのリスト)だけで決まるため、再描画しても配置は安定する。
-    let lastFeaturedIdx = -1;
+    // 推し色の大きな表示(縦長1列×2行): loade/CLETOの色から選ぶ。間隔は8〜16枚の
+    // 範囲で不規則に空ける(間隔列 TALL_GAPS は固定で、並び順だけから決まるため、
+    // 同じリストでは再描画しても配置は安定する)。目標位置に最も近い候補を採る。
+    // 末尾近くは縦長の下半分が最後の行に1枚だけはみ出す形になるため対象外にする。
+    const TALL_GAPS = [10, 14, 8, 15, 11, 16, 9, 13, 12, 8];
+    const tallIdx = new Set();
+    {
+      const colsNow = parseInt(getComputedStyle(document.getElementById('colors')).getPropertyValue('--cc-cols'), 10) || 6;
+      const tailGuard = Math.max(colsNow, 6); // 後ろにこの枚数が続かないものは縦長にしない
+      const cand = [];
+      filtered.forEach((c, i) => { if ((c.maker === 'loade' || c.maker === 'CLETO') && i < filtered.length - tailGuard) cand.push(i); });
+      let prev = -1, k = 0;
+      while (cand.length) {
+        let pool;
+        if (prev < 0) pool = cand;
+        else {
+          pool = cand.filter(i => i >= prev + 8 && i <= prev + 16);
+          if (!pool.length) pool = cand.filter(i => i > prev + 16);
+        }
+        pool = pool.filter(i => i > prev);
+        if (!pool.length) break;
+        const target = prev < 0 ? cand[0] : prev + TALL_GAPS[k % TALL_GAPS.length];
+        let chosen = pool[0], best = Infinity;
+        pool.forEach(i => { const d = Math.abs(i - target); if (d < best) { best = d; chosen = i; } });
+        tallIdx.add(chosen);
+        prev = chosen; k++;
+      }
+    }
     filtered.forEach((c, cardIdx) => {
       const el = document.createElement('div');
       el.className = 'color-card';
-      const isFeatured = (c.maker === 'loade' || c.maker === 'CLETO') && (lastFeaturedIdx < 0 || cardIdx - lastFeaturedIdx >= 12);
-      if (isFeatured) { el.classList.add('featured'); lastFeaturedIdx = cardIdx; }
+      const isTall = tallIdx.has(cardIdx);
+      if (isTall) el.classList.add('tall');
       // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
       // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
       const gridImg = c.thumbSmall || c.thumb || '';
@@ -3547,7 +3572,7 @@ function renderColorGrids() {
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
           img.replaceWith(sw);
-        }, ((key === 'ALL' && cardIdx < 12) || isFeatured) ? { eager: true } : null);
+        }, ((key === 'ALL' && cardIdx < 12) || isTall) ? { eager: true } : null);
         if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
         el.appendChild(img);
       } else {
