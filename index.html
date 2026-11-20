@@ -2065,21 +2065,46 @@ function observeCdLazyImg(img, scrollRoot, onFinalFail) {
   io.observe(img);
 }
 
-function loadImgWithRetry(img, src, onFinalFail) {
+function loadImgWithRetry(img, src, onFinalFail, opts) {
   // 画面に入るまで読み込みを遅延させ、初回表示を軽くする(大量のグリッド画像対策)。
   // decoding=async で画像デコードもメインスレッドを止めないようにする。
-  if (!img.loading) img.loading = 'lazy';
+  // ※ img.loading プロパティは未設定でも "auto" を返すため、効かせるには
+  //   属性(loading)の有無で判定する必要がある(以前は !img.loading 判定で
+  //   常に真にならず、全グリッド画像が eager になって初回表示が重かった)。
+  if (opts && opts.eager) {
+    img.loading = 'eager';
+    img.fetchPriority = 'high';
+  } else if (!img.getAttribute('loading')) {
+    img.loading = 'lazy';
+  }
   img.decoding = 'async';
   let attempts = 0;
   img.onerror = () => {
     attempts++;
     if (attempts <= 1) {
+      // CORS付き読み込みで失敗した場合は、CORSを外せば表示できることがあるため外して再試行する
+      if (img.crossOrigin) img.removeAttribute('crossorigin');
       setTimeout(() => { img.src = src; }, 700);
     } else if (onFinalFail) {
       onFinalFail();
     }
   };
   img.src = src;
+}
+
+// グリッド表示用に、Googleドライブ(lh3)画像の取得サイズを小さくする。
+// セルは最大でも幅約90px・拡大表示でも高々200px程度なので w320 で十分足りる
+// (従来は thumb/thumbSmall とも大抵 =w900 で、1枚約100KBを全件読み込んでいた)。
+// lh3以外のURL(サイズ指定の仕組みが無いもの)はそのまま返す。
+function gridImgUrl(url) {
+  if (!url || !url.includes('lh3.googleusercontent.com')) return url;
+  return url.replace(/=w\d+/, '=w320');
+}
+// lh3 は CORS(Access-Control-Allow-Origin: *)を返すため、表示用 img に
+// crossOrigin を付けても表示は壊れない。付けておくと、読み込み済みの画像を
+// そのまま canvas で測れるようになり、測定専用の再ダウンロードが不要になる。
+function prepGridImg(img, url) {
+  if (url && url.includes('lh3.googleusercontent.com')) img.crossOrigin = 'anonymous';
 }
 
 // ── サイトのテーマ着せ替え ──
@@ -3359,9 +3384,15 @@ function matZoomFor(box) {
 }
 // 表示用の画像とは別に、測るためだけの画像を crossOrigin で読む
 // (表示用の img に crossOrigin を付けると、端末によって画像自体が出なくなることがあったため、表示側には付けない)
-function applyMatZoom(el, src) {
+function applyMatZoom(el, src, imgEl) {
   const set = z => { if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
   if (matZoomCache.has(src)) { set(matZoomCache.get(src)); return; }
+  // 表示用 img が CORS 付きで読み込み済みなら、それ自体を直接測る(再ダウンロード不要)。
+  // CORS付きで読めているのに測れない場合は「全面が不透明」等で測定対象外なので確定させる。
+  if (imgEl && imgEl.crossOrigin && imgEl.naturalWidth) {
+    const z = matZoomFor(matSubjectBox(imgEl));
+    matZoomCache.set(src, z); set(z); return;
+  }
   const probe = new Image();
   probe.crossOrigin = 'anonymous';
   probe.decoding = 'async';
@@ -3444,18 +3475,19 @@ function renderColorGrids() {
       return ccSortOrder === 'old' ? ta - tb : tb - ta;
     });
     if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
-    filtered.forEach(c => {
+    filtered.forEach((c, cardIdx) => {
       const el = document.createElement('div');
       el.className = 'color-card';
       // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
       // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
-      const gridImg = c.thumbSmall || c.thumb || '';
+      const gridImg = gridImgUrl(c.thumbSmall || c.thumb || '');
       if (gridImg) {
         const img = document.createElement('img');
         img.alt = c.name || '';
+        prepGridImg(img, gridImg);
         // 表示用の画像が読み込めたら、被写体の大きさを測って倍率を決める(1回だけ)
         let zoomed = false;
-        const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg); };
+        const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img); };
         img.addEventListener('load', zoom);
         loadImgWithRetry(img, gridImg, () => {
           el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
@@ -3463,7 +3495,7 @@ function renderColorGrids() {
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
           img.replaceWith(sw);
-        });
+        }, (key === 'ALL' && cardIdx < 12) ? { eager: true } : null);
         if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
         el.appendChild(img);
       } else {
@@ -4949,10 +4981,20 @@ function chartStoneTarget(sizeMm) {
 // 「画布ではなく石」が目標サイズになるよう画像を拡縮し、石の中心をカード中心へ寄せる。
 // 測れない画像(全面写真など probeSubjectBox が null)は何もせず、
 // --pscale の従来表示(フォールバック)のままにする。
+// 表示用 img 自体から被写体範囲を測る(probeSubjectBox と同じ返却形式)。
+// 四辺まで不透明が届く画像は「全面写真」で補正対象外として null を返す。
+function subjectRecFromImg(img) {
+  const box = matSubjectBox(img);
+  if (!box) return null;
+  const edgeToEdge = box.l <= 0.001 && box.t <= 0.001 && box.r >= 0.999 && box.b >= 0.999;
+  if (edgeToEdge) return null;
+  return { l: box.l, r: box.r, t: box.t, b: box.b, nw: img.naturalWidth, nh: img.naturalHeight };
+}
+
 function applyChartStoneScale(el, img, src, sizeMm, targetOverride) {
   if (!src || !(sizeMm > 0)) return;
   const target = (targetOverride != null) ? targetOverride : chartStoneTarget(sizeMm);
-  probeSubjectBox(src, rec => {
+  const applyRec = rec => {
     if (!rec) return; // 測定不可 → フォールバック
     if (img.parentElement !== el) return; // 画像が差し替え/破棄されていたら触らない
     const fw = rec.r - rec.l, fh = rec.b - rec.t;
@@ -4971,7 +5013,16 @@ function applyChartStoneScale(el, img, src, sizeMm, targetOverride) {
     const tx = -s * dx * 100;        // translateX は要素幅に対する%
     const ty = -s * dy * 0.72 * 100; // translateY は要素高さに対する%(高さ=幅/0.72)
     img.style.transform = 'translate(' + tx.toFixed(2) + '%, ' + ty.toFixed(2) + '%) scale(' + s.toFixed(3) + ')';
-  });
+  };
+  // 表示用 img が CORS 付き(lh3)なら、読み込み済みの画像を直接測って再ダウンロードを避ける。
+  // CORS付きで読めているのに測れない場合は測定対象外(全面写真など)なのでフォールバック確定。
+  if (img && img.crossOrigin) {
+    const tryDirect = () => { const rec = subjectRecFromImg(img); if (rec) applyRec(rec); };
+    if (img.complete && img.naturalWidth) tryDirect();
+    else img.addEventListener('load', tryDirect, { once: true });
+    return;
+  }
+  probeSubjectBox(src, applyRec);
 }
 // NEW IN / OUT OF STOCK のステータス一覧専用の表示倍率: フルサイズのネイルチップと
 // 混在する一覧では実寸比だとパーツが点になって見えないため、チャートより強めに
@@ -5045,7 +5096,7 @@ function renderPartsGrid() {
       if (rep) g.item = rep;
     }
   });
-  displayItems.forEach(g => {
+  displayItems.forEach((g, cardIdx) => {
     const p = g.item;
     const seriesGroup = (g.members && g.members.length > 1) ? g.members : null;
     const el = document.createElement('div');
@@ -5066,16 +5117,17 @@ function renderPartsGrid() {
       el.classList.add('sized');
       el.style.setProperty('--pscale', chartPartScale(sizeNum, isStudsOrChaton(p)));
     }
-    const gridImg = p.thumbSmall || p.thumb || '';
+    const gridImg = gridImgUrl(p.thumbSmall || p.thumb || '');
     if (gridImg) {
       const img = document.createElement('img');
       img.alt = p.name || '';
+      prepGridImg(img, gridImg);
       loadImgWithRetry(img, gridImg, () => {
         const sw = document.createElement('div');
         sw.className = 'color-card-swatch';
         sw.style.background = p.css || '#cccccc';
         img.replaceWith(sw);
-      });
+      }, cardIdx < 12 ? { eager: true } : null);
       el.appendChild(img);
       // チャートでは画布ではなく石そのものが目標サイズになるよう bbox で正規化する
       // (FBシリーズカードは従来どおり10mm相当が目標。測れなければ --pscale のまま)
@@ -5410,10 +5462,11 @@ function renderPublic() {
       el.classList.add('sized');
       el.style.setProperty('--pscale', statusPartScale(sizeNum));
     }
-    const gridImg = it.thumb || '';
+    const gridImg = gridImgUrl(it.thumbSmall || it.thumb || '');
     if (gridImg) {
       const img = document.createElement('img');
       img.alt = it.name || '';
+      prepGridImg(img, gridImg);
       loadImgWithRetry(img, gridImg, () => {
         const sw = document.createElement('div');
         sw.className = 'color-card-swatch';
