@@ -191,7 +191,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    拡大した画像の透明な余白が隣に出ず、影だけが外へ広がる */
 #parts .parts-grid{column-gap:14px;row-gap:30px;padding:18px 16px 26px;}
 #parts .parts-grid .color-card{overflow:visible;content-visibility:visible;contain-intrinsic-size:none;contain:none;background:transparent;border:0;}
-#parts .parts-grid .part-shadow{position:absolute;inset:-28px;padding:28px;overflow:hidden;pointer-events:none;}
+#parts .parts-grid .part-shadow{position:absolute;inset:-28px;padding:28px;overflow:visible;pointer-events:none;}
 #parts .parts-grid .part-shadow > img{filter:drop-shadow(0 2px 3px rgba(40,42,52,.63)) drop-shadow(0 10px 15px rgba(40,42,52,.37));}
 #parts .parts-grid .part-shadow > .color-card-swatch{box-shadow:0 2px 3px rgba(40,42,52,.63),0 10px 15px rgba(40,42,52,.37);}
 #parts .parts-grid .color-card.sized .part-shadow > img,#parts .parts-grid .color-card.sized .part-shadow > .color-card-swatch{transform:scale(var(--pscale,1));transform-origin:center;}
