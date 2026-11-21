@@ -166,54 +166,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    .tall を付ける)。チップ画像は縦長なので横には広げず、縦にだけ伸ばす。
    dense で、縦長カードの脇にできた隙間を後続の通常カードで埋める。
    対象はカラーチャートの7グリッドだけ(PARTS/NEW IN等には付けない) */
-#colors .color-grid{grid-auto-flow:dense;}
+#color-ALL-grid,#color-Gel-grid,#color-Chrome-grid,#color-GlitterGel-grid,#color-GlitterPowder-grid,#color-Magnet-grid,#color-Gradation-grid{grid-auto-flow:dense;}
 .color-card.tall{grid-row:span 2;aspect-ratio:auto;contain-intrinsic-size:140px 394px;}
-
-/* ── COLOR ARCHIVE の見た目(2026-11-21): 展示面にチップが置かれている感じ ──
-   対象はカラーチャート(#colors / #colorOverlay 配下)だけ。PARTS・NEW IN・
-   お気に入り等、.color-card / .color-grid の共用先には効かせないよう、
-   セレクタは全て #colors / #colorOverlay で絞る。機能は一切変えていない。 */
-/* 展示面: 深いチャコール #242424 + ごく薄いマットな粒子。
-   粒子の下には、中央(50% 30%)が僅かに明るく周囲へ落ちる「撮られた面」の
-   光だけを敷く(装飾グラデーションではなく、写真の周辺減光としてごく薄く) */
-#colorOverlay .sv-bg{background-color:#242424;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(ellipse at 50% 30%, #2b2b2b 0%, #242424 75%);background-size:160px 160px,100% 100%;}
-/* グリッドの「間」: 列数が少ないほど広く取る(setColorCols が --cc-gap を出す。未設定時は12px) */
-#colors .color-grid{gap:var(--cc-gap,12px);}
-/* 枠なし: セルでの切り抜きをやめ、チップが面の上に直接置かれている見え方にする。
-   影はチップの形をなぞる drop-shadow 1枚だけ・弱く(以前の2枚重ね+傾け案は不採用)。
-   --stg は列ごとの小さな縦ずれ(renderColorGrids が列インデックスから決める)。
-   transform はレイアウトに影響しないため、縦長タイルとも重ならない */
-#colors .color-card{overflow:visible;transform:translateY(var(--stg,0px));}
-#colors .color-card:active{transform:translateY(var(--stg,0px)) scale(.96);}
-#colors .color-card img{filter:drop-shadow(0 3px 6px rgba(0,0,0,.22));}
-#colors .color-card-swatch{box-shadow:0 3px 6px rgba(0,0,0,.22);}
-/* セクション見出し: ブランド名(Special Elite・字間広め)+罫+件数だけの編集風 */
-.cc-section{margin-top:40px;}
-.cc-section:first-child{margin-top:2px;}
-.cc-section-head{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
-.cc-section-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.02rem;letter-spacing:.24em;color:var(--white);white-space:nowrap;}
-.cc-section-rule{flex:1;height:1px;background:rgba(255,255,255,.16);}
-.cc-section-count{font-family:'Special Elite','Kosugi',sans-serif;font-size:.58rem;letter-spacing:.16em;color:var(--gray-mid);white-space:nowrap;}
-/* ── COLORS フィールド表示(2026-11-21): 段ごとに3/4/5個が並ぶ展示レイアウト ──
-   チャートの唯一の表示形式(セクション分け・縦長タイルは廃止)。
-   段の寄せ方(space-between / space-around)を交互に変え、次の段のチップが
-   前の段の隙間に座る見え方にする。傾きは画像のラッパー(.tip-wrap)にだけ付け、
-   画像自身の transform(alpha bbox ズーム)とは分ける。対象は #colors のみ */
-/* 左右のパディングは、チップの傾きと接地影(下方向+ぼかし)が画面端で
-   切れたり横スクロールを生んだりしないための逃げ */
-#colors .cc-field{display:flex;flex-direction:column;gap:30px;padding:10px 12px 16px;}
-#colors .cc-field-row{display:flex;align-items:flex-start;}
-#colors .cc-field-row.jb{justify-content:space-between;}
-#colors .cc-field-row.ja{justify-content:space-around;}
-#colors .cc-field-row.jc{justify-content:center;}
-#colors .cc-field .color-card{flex:0 0 auto;max-width:250px;}
-#colors .tip-wrap{width:100%;height:100%;}
-#colors .color-card.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
-/* フィールドの接地影: 「置かれている」手がかり。チップの形(alpha)をなぞる
-   2枚重ねで、真下に寄せた濃い影(接地点)+ 広がって消える薄い影(環境光)。
-   光は真上から一方向に統一。#colors 全体の単層の薄い影より意図的に強くする */
-#colors .cc-field .color-card img{filter:drop-shadow(0 5px 6px rgba(0,0,0,.40)) drop-shadow(0 12px 16px rgba(0,0,0,.22));}
-#colors .cc-field .color-card-swatch{box-shadow:0 5px 6px rgba(0,0,0,.40),0 12px 16px rgba(0,0,0,.22);}
 
 /* ── POPULAR(直近30日の閲覧数で自動選出する人気カラー) ── */
 .featured-shelf{margin-bottom:26px;}
@@ -1265,6 +1219,21 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
         </select>
       </div>
     </div>
+    <div class="cc-control">
+      <span class="cc-mini-label">表示列数</span>
+      <div class="tab-select-wrap tab-select-wrap-sm">
+        <select class="tab-select tab-select-sm" id="ccColsSelect" onchange="setColorCols(this.value)">
+          <option value="3">3列</option>
+          <option value="4">4列</option>
+          <option value="5">5列</option>
+          <option value="6" selected>6列</option>
+          <option value="7">7列</option>
+          <option value="8">8列</option>
+          <option value="9">9列</option>
+          <option value="10">10列</option>
+        </select>
+      </div>
+    </div>
     </div>
     <div class="cc-color-row">
       <div class="cc-color-head">
@@ -1276,13 +1245,13 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
   </div>
 
   <div class="tab-content-wrap">
-  <div id="tab-ALL" class="tab-content active reveal"><div class="color-sections" id="color-ALL-grid"></div></div>
-  <div id="tab-Gel" class="tab-content reveal"><div class="color-sections" id="color-Gel-grid"></div></div>
-  <div id="tab-Chrome" class="tab-content reveal"><div class="color-sections" id="color-Chrome-grid"></div></div>
-  <div id="tab-GlitterGel" class="tab-content reveal"><div class="color-sections" id="color-GlitterGel-grid"></div></div>
-  <div id="tab-GlitterPowder" class="tab-content reveal"><div class="color-sections" id="color-GlitterPowder-grid"></div></div>
-  <div id="tab-Magnet" class="tab-content reveal"><div class="color-sections" id="color-Magnet-grid"></div></div>
-  <div id="tab-Gradation" class="tab-content reveal"><div class="color-sections" id="color-Gradation-grid"></div></div>
+  <div id="tab-ALL" class="tab-content active reveal"><div class="color-grid" id="color-ALL-grid"></div></div>
+  <div id="tab-Gel" class="tab-content reveal"><div class="color-grid" id="color-Gel-grid"></div></div>
+  <div id="tab-Chrome" class="tab-content reveal"><div class="color-grid" id="color-Chrome-grid"></div></div>
+  <div id="tab-GlitterGel" class="tab-content reveal"><div class="color-grid" id="color-GlitterGel-grid"></div></div>
+  <div id="tab-GlitterPowder" class="tab-content reveal"><div class="color-grid" id="color-GlitterPowder-grid"></div></div>
+  <div id="tab-Magnet" class="tab-content reveal"><div class="color-grid" id="color-Magnet-grid"></div></div>
+  <div id="tab-Gradation" class="tab-content reveal"><div class="color-grid" id="color-Gradation-grid"></div></div>
   </div>
   </section>
   </div>
@@ -2546,11 +2515,6 @@ function buildColorFamilyBar() {
 
 function setColorCols(n) {
   document.getElementById('colors').style.setProperty('--cc-cols', n);
-  // 列数が少ないほど余白を広く取る(展示面に置かれたチップの「間」)。
-  // グリッド側は #colors .color-grid の gap:var(--cc-gap) で受ける
-  const nn = parseInt(n, 10) || 6;
-  const gap = nn <= 4 ? 15 : (nn <= 6 ? 12 : 10);
-  document.getElementById('colors').style.setProperty('--cc-gap', gap + 'px');
 }
 
 function applyIpadDefaultCols() {
@@ -3467,11 +3431,8 @@ function matZoomFor(box) {
 }
 // 表示用の画像とは別に、測るためだけの画像を crossOrigin で読む
 // (表示用の img に crossOrigin を付けると、端末によって画像自体が出なくなることがあったため、表示側には付けない)
-function applyMatZoom(el, src, imgEl, clamp) {
-  // clamp(任意・[下限,上限]): 倍率キャッシュは従来どおり素の値を共有し、
-  // 適用時にだけ丸める。COLORSフィールドだけ [0.9, 1.15] を渡して
-  // 「枠いっぱいに広げない穏やかな正規化」にし、他の表示は従来どおり。
-  const set = z => { if (clamp) z = Math.min(clamp[1], Math.max(clamp[0], z)); if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
+function applyMatZoom(el, src, imgEl) {
+  const set = z => { if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
   if (matZoomCache.has(src)) { set(matZoomCache.get(src)); return; }
   // 表示用 img が CORS 付きで読み込み済みなら、それ自体を直接測る(再ダウンロード不要)。
   // CORS付きで読めているのに測れない場合は「全面が不透明」等で測定対象外なので確定させる。
@@ -3482,7 +3443,7 @@ function applyMatZoom(el, src, imgEl, clamp) {
   const probe = new Image();
   probe.crossOrigin = 'anonymous';
   probe.decoding = 'async';
-  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector(':scope > img, :scope .tip-wrap > img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
+  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector(':scope > img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
   probe.onerror = () => { matZoomCache.set(src, 1); }; // 読めなければ拡大しない(エラーは出さない)
   probe.src = src;
 }
@@ -3528,23 +3489,15 @@ function trueSizeImgWidthMm(sizeVal, rec) {
   if (!isFinite(mm) || mm <= 0) return null;
   return Math.min(40, Math.max(0.5, mm)); // 異常値だけ丸める(0.8mm級の極小パーツは画像幅も1mm未満になり得る)
 }
-// 名前+メーカーから決定的なハッシュを作る(フィールド表示の傾き・縦ずれ用)。
-// 同じ商材は再描画・並び替え・絞り込みでも必ず同じ値になる。
-function fieldHash(s) {
-  let h = 0;
-  const str = String(s || '');
-  for (let i = 0; i < str.length; i++) h = ((h * 31) + str.charCodeAt(i)) | 0;
-  return h >>> 0;
-}
 function renderColorGrids() {
   // カテゴリのタブ名(HTMLのid用)と、Notionのカテゴリ名の対応。
   // グリッターは「ラメ入りジェル(Glitter Gel)」と「粉ラメ(Glitter Powder)」の2つに分けている。
   const CAT_TABS = { ALL: 'ALL', Gel: 'Gel', Chrome: 'Chrome', GlitterGel: 'Glitter Gel', GlitterPowder: 'Glitter Powder', Magnet: 'Magnet', Gradation: 'Gradation' };
   Object.keys(CAT_TABS).forEach(key => {
     const cat = CAT_TABS[key];
-    const wrap = document.getElementById('color-'+key+'-grid');
-    if (!wrap) return;
-    wrap.innerHTML = '';
+    const grid = document.getElementById('color-'+key+'-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
     const filtered = notionMaterials.filter(m => {
       if (cat !== 'ALL' && !String(m.category || '').split(',').map(s => s.trim()).includes(cat)) return false;
       if (ccMakerFilter !== 'ALL' && (m.maker||'') !== ccMakerFilter) return false;
@@ -3568,88 +3521,74 @@ function renderColorGrids() {
       const tb = b.releaseDate ? new Date(b.releaseDate).getTime() : (b.created ? new Date(b.created).getTime() : 0);
       return ccSortOrder === 'old' ? ta - tb : tb - ta;
     });
-    if (!filtered.length) { wrap.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;">該当する商材がありません</p>'; return; }
-    // ── フィールド表示(チャート唯一の表示形式) ──
-    // 段ごとに3/4/5個を並べ、段の寄せ方(space-between / space-around)を
-    // 交互に変えることで、次の段のチップが前の段の隙間に座る見え方にする。
-    // 段の個数は [3,4,5,4] の繰り返しで決定的に決まり、絞り込み・並べ替えが
-    // 変われば先頭の段(3個)から組み直す。縦長タイルやブランド別セクションは
-    // この画面には無い(承認済みモックどおり、ほぼ均一なフィールド)。
-    const FIELD_PATTERN = [3, 4, 5, 4];
-    // チップの表示幅(コンテナ幅に対する%)。段の個数が少ない段ほど僅かに
-    // 大きくするが、段同士の差は±10%以内に収める(ほぼ均一に見える範囲)。
-    // 2026-11-21: 「画像が並んでいる」ではなく「小さな実物が置かれている」
-    // 見え方にするため、以前の幅(19/19/19.3/18.5/17.6)の約0.66倍に縮小。
-    // チップの周りに空気が残り、1画面に収まる数も増える。
-    const FIELD_WIDTH = { 1: 12.5, 2: 12.5, 3: 12.7, 4: 12.2, 5: 11.6 };
-    // フィールドでは alpha bbox ズームを [0.90, 1.15] に丸める(applyMatZoom の
-    // clamp)。枠いっぱいに広げず、チップ同士の自然な大きさの差を残すため。
-    const FIELD_ZOOM_CLAMP = [0.9, 1.15];
-    const field = document.createElement('div');
-    field.className = 'cc-field';
-    let renderPos = 0; // このタブで描画した順序(先頭12枚の eager 判定用・従来どおり)
-    let cursor = 0, rowIdx = 0;
-    while (cursor < filtered.length) {
-      const items = filtered.slice(cursor, cursor + FIELD_PATTERN[rowIdx % FIELD_PATTERN.length]);
-      cursor += items.length;
-      const row = document.createElement('div');
-      // 1個だけの段は中央、2個の段は均等寄せ、それ以外は段ごとに交互
-      row.className = 'cc-field-row ' + (items.length === 1 ? 'jc' : items.length === 2 ? 'ja' : (rowIdx % 2 === 0 ? 'jb' : 'ja'));
-      const wPct = FIELD_WIDTH[items.length] || (58 / items.length);
-      items.forEach(c => {
-        const el = document.createElement('div');
-        el.className = 'color-card';
-        el.style.width = wPct + '%';
-        // 「置かれた感じ」の小さな傾きと縦ずれは、名前+メーカーのハッシュで
-        // 決定的に決める(同じ商材は再描画・並び替え・絞り込みでも同じ値)。
-        // 傾きは画像のラッパー(.tip-wrap)にだけ付け、画像自身の transform
-        // (alpha bbox ズーム)とは競合させない。
-        const fh = fieldHash((c.name || '') + '|' + (c.maker || ''));
-        el.style.marginTop = (fh % 13) + 'px'; // 0〜12px
-        const tilt = ((Math.floor(fh / 16) % 13) - 6) * 0.5; // -3〜+3度(0.5度刻み)
-        // サムネイルが未設定でも、商材画像(詳細用)があればフィールドにも表示する。
-        // 小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
-        const gridImg = c.thumbSmall || c.thumb || '';
-        if (gridImg) {
-          const tw = document.createElement('div');
-          tw.className = 'tip-wrap';
-          tw.style.transform = 'rotate(' + tilt + 'deg)';
-          const img = document.createElement('img');
-          img.alt = c.name || '';
-          prepGridImg(img, gridImg);
-          // 表示用の画像が読み込めたら、被写体の大きさを測って倍率を決める(1回だけ)
-          let zoomed = false;
-          const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img, FIELD_ZOOM_CLAMP); };
-          img.addEventListener('load', zoom);
-          loadGridImg(img, gridImg, () => {
-            el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
-            const sw = document.createElement('div');
-            sw.className = 'color-card-swatch';
-            sw.style.background = c.css || '#cccccc';
-            img.replaceWith(sw);
-          }, (key === 'ALL' && renderPos < 12) ? { eager: true } : null);
-          if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
-          tw.appendChild(img);
-          el.appendChild(tw);
-        } else {
+    if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
+    // 推し色の大きな表示(縦長1列×2行): loade/CLETOの色から選ぶ。間隔は8〜16枚の
+    // 範囲で不規則に空ける(間隔列 TALL_GAPS は固定で、並び順だけから決まるため、
+    // 同じリストでは再描画しても配置は安定する)。目標位置に最も近い候補を採る。
+    // 末尾近くは縦長の下半分が最後の行に1枚だけはみ出す形になるため対象外にする。
+    const TALL_GAPS = [10, 14, 8, 15, 11, 16, 9, 13, 12, 8];
+    const tallIdx = new Set();
+    {
+      const colsNow = parseInt(getComputedStyle(document.getElementById('colors')).getPropertyValue('--cc-cols'), 10) || 6;
+      const tailGuard = Math.max(colsNow, 6); // 後ろにこの枚数が続かないものは縦長にしない
+      const cand = [];
+      filtered.forEach((c, i) => { if ((c.maker === 'loade' || c.maker === 'CLETO') && i < filtered.length - tailGuard) cand.push(i); });
+      let prev = -1, k = 0;
+      while (cand.length) {
+        let pool;
+        if (prev < 0) pool = cand;
+        else {
+          pool = cand.filter(i => i >= prev + 8 && i <= prev + 16);
+          if (!pool.length) pool = cand.filter(i => i > prev + 16);
+        }
+        pool = pool.filter(i => i > prev);
+        if (!pool.length) break;
+        const target = prev < 0 ? cand[0] : prev + TALL_GAPS[k % TALL_GAPS.length];
+        let chosen = pool[0], best = Infinity;
+        pool.forEach(i => { const d = Math.abs(i - target); if (d < best) { best = d; chosen = i; } });
+        tallIdx.add(chosen);
+        prev = chosen; k++;
+      }
+    }
+    filtered.forEach((c, cardIdx) => {
+      const el = document.createElement('div');
+      el.className = 'color-card';
+      const isTall = tallIdx.has(cardIdx);
+      if (isTall) el.classList.add('tall');
+      // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
+      // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
+      const gridImg = c.thumbSmall || c.thumb || '';
+      if (gridImg) {
+        const img = document.createElement('img');
+        img.alt = c.name || '';
+        prepGridImg(img, gridImg);
+        // 表示用の画像が読み込めたら、被写体の大きさを測って倍率を決める(1回だけ)
+        let zoomed = false;
+        const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img); };
+        img.addEventListener('load', zoom);
+        loadGridImg(img, gridImg, () => {
+          el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
           const sw = document.createElement('div');
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
-          el.appendChild(sw);
-        }
-        el.appendChild(buildFavHeart(c));
-        const label = document.createElement('span');
-        label.className = 'color-name';
-        label.textContent = c.name || '';
-        el.appendChild(label);
-        el.onclick = () => openColorDetail(c);
-        row.appendChild(el);
-        renderPos++;
-      });
-      field.appendChild(row);
-      rowIdx++;
-    }
-    wrap.appendChild(field);
+          img.replaceWith(sw);
+        }, ((key === 'ALL' && cardIdx < 12) || isTall) ? { eager: true } : null);
+        if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
+        el.appendChild(img);
+      } else {
+        const sw = document.createElement('div');
+        sw.className = 'color-card-swatch';
+        sw.style.background = c.css || '#cccccc';
+        el.appendChild(sw);
+      }
+      el.appendChild(buildFavHeart(c));
+      const label = document.createElement('span');
+      label.className = 'color-name';
+      label.textContent = c.name || '';
+      el.appendChild(label);
+      el.onclick = () => openColorDetail(c);
+      grid.appendChild(el);
+    });
   });
 }
 
