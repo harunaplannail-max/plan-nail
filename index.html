@@ -169,6 +169,18 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #color-ALL-grid,#color-Gel-grid,#color-Chrome-grid,#color-GlitterGel-grid,#color-GlitterPowder-grid,#color-Magnet-grid,#color-Gradation-grid{grid-auto-flow:dense;}
 .color-card.tall{grid-row:span 2;aspect-ratio:auto;contain-intrinsic-size:140px 394px;}
 
+/* COLORS: チップを「並んだ画像」ではなく「面の上に置いた実物」に見せる(カラーチャートの7グリッド限定)。
+   ① カードの切り抜き(overflow:hidden)を外し、枠なしで面に直接置いた形にする
+   ② 影はチップの輪郭(alpha)をなぞる drop-shadow を2重に(付け根の濃い影+全体の柔らかい影)。
+      影は img 自身の filter なので、ズーム(transform:scale)ともそのまま合成される
+   ③ 傾きは img ではなく包む .tip-wrap に付ける(ズームの transform と競合させないため)。
+      角度(--tilt)と縦位置(--dy)は商材ごとに固定で JS が決めるので、再描画しても同じ傾きになる。
+      ハート(.fav-heart)は包まないので傾かない */
+#color-ALL-grid .color-card,#color-Gel-grid .color-card,#color-Chrome-grid .color-card,#color-GlitterGel-grid .color-card,#color-GlitterPowder-grid .color-card,#color-Magnet-grid .color-card,#color-Gradation-grid .color-card{overflow:visible;}
+#color-ALL-grid .tip-wrap,#color-Gel-grid .tip-wrap,#color-Chrome-grid .tip-wrap,#color-GlitterGel-grid .tip-wrap,#color-GlitterPowder-grid .tip-wrap,#color-Magnet-grid .tip-wrap,#color-Gradation-grid .tip-wrap{display:block;width:100%;height:100%;transform:rotate(var(--tilt,0deg)) translateY(var(--dy,0px));}
+#color-ALL-grid .color-card img,#color-Gel-grid .color-card img,#color-Chrome-grid .color-card img,#color-GlitterGel-grid .color-card img,#color-GlitterPowder-grid .color-card img,#color-Magnet-grid .color-card img,#color-Gradation-grid .color-card img{filter:drop-shadow(0 2px 2px rgba(0,0,0,.35)) drop-shadow(0 7px 10px rgba(0,0,0,.30));}
+#color-ALL-grid .color-card-swatch,#color-Gel-grid .color-card-swatch,#color-Chrome-grid .color-card-swatch,#color-GlitterGel-grid .color-card-swatch,#color-GlitterPowder-grid .color-card-swatch,#color-Magnet-grid .color-card-swatch,#color-Gradation-grid .color-card-swatch{border-radius:2px;box-shadow:0 3px 8px rgba(0,0,0,.35);}
+
 /* ── POPULAR(直近30日の閲覧数で自動選出する人気カラー) ── */
 .featured-shelf{margin-bottom:26px;}
 .featured-head{margin-bottom:10px;}
@@ -279,7 +291,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 /* COLORSグリッド:切り抜きサムネの被写体(チップ)が小さく見えるものだけ、画像ごとに決めた倍率で拡大する。
    倍率は JS の matZoomFor() が、画像の不透明な部分の大きさから計算して --mat-zoom に入れる(1.0〜1.39)。
    拡大してもセル(overflow:hidden)からはみ出さない倍率にしてあるので、切れるのは透明な余白だけ */
-.color-card.mat-img-zoom > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
+.color-card.mat-img-zoom > img, .color-card.mat-img-zoom > .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
 .color-name{position:absolute;bottom:0;left:0;right:0;padding:5px 3px;background:rgba(0,0,0,.7);font-size:.55rem;text-align:center;color:var(--white);opacity:0;transition:opacity .2s;}
 .fav-heart{position:absolute;top:5px;left:5px;width:22px;height:22px;z-index:2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;}
 .fav-heart:active{transform:scale(.85);}
@@ -3443,7 +3455,7 @@ function applyMatZoom(el, src, imgEl) {
   const probe = new Image();
   probe.crossOrigin = 'anonymous';
   probe.decoding = 'async';
-  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector(':scope > img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
+  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector(':scope > img, :scope > .tip-wrap > img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
   probe.onerror = () => { matZoomCache.set(src, 1); }; // 読めなければ拡大しない(エラーは出さない)
   probe.src = src;
 }
@@ -3488,6 +3500,15 @@ function trueSizeImgWidthMm(sizeVal, rec) {
   const mm = widthMm * rec.nw / bwPx; // 石の幅が widthMm になる画像全体の表示幅
   if (!isFinite(mm) || mm <= 0) return null;
   return Math.min(40, Math.max(0.5, mm)); // 異常値だけ丸める(0.8mm級の極小パーツは画像幅も1mm未満になり得る)
+}
+// 「置いた感じ」の傾き: 商材名+メーカーから決める決定的な値にする(同じ商材は
+// フィルターや並び替えで描き直しても必ず同じ傾き・位置になる)。
+// 角度は -3.0〜+3.0度、縦位置は -1〜+1px。どちらも「手で置いた」程度の僅かな散らし方。
+function tipTiltFor(c) {
+  const s = (c.name || '') + '|' + (c.maker || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return { deg: -3 + (h % 61) / 10, dy: ((h >>> 7) % 3) - 1 };
 }
 function renderColorGrids() {
   // カテゴリのタブ名(HTMLのid用)と、Notionのカテゴリ名の対応。
@@ -3558,6 +3579,13 @@ function renderColorGrids() {
       // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
       // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
       const gridImg = c.thumbSmall || c.thumb || '';
+      // チップを包む .tip-wrap に商材ごとの傾きを持たせ、「置いた」感じにする。
+      // ズームは img 自身の transform で行うため、傾きは包む側に付けて競合を避ける。
+      const wrap = document.createElement('div');
+      wrap.className = 'tip-wrap';
+      const tilt = tipTiltFor(c);
+      wrap.style.setProperty('--tilt', tilt.deg.toFixed(1) + 'deg');
+      wrap.style.setProperty('--dy', tilt.dy + 'px');
       if (gridImg) {
         const img = document.createElement('img');
         img.alt = c.name || '';
@@ -3574,13 +3602,14 @@ function renderColorGrids() {
           img.replaceWith(sw);
         }, ((key === 'ALL' && cardIdx < 12) || isTall) ? { eager: true } : null);
         if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
-        el.appendChild(img);
+        wrap.appendChild(img);
       } else {
         const sw = document.createElement('div');
         sw.className = 'color-card-swatch';
         sw.style.background = c.css || '#cccccc';
-        el.appendChild(sw);
+        wrap.appendChild(sw);
       }
+      el.appendChild(wrap);
       el.appendChild(buildFavHeart(c));
       const label = document.createElement('span');
       label.className = 'color-name';
