@@ -280,6 +280,31 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    倍率は JS の matZoomFor() が、画像の不透明な部分の大きさから計算して --mat-zoom に入れる(1.0〜1.39)。
    拡大してもセル(overflow:hidden)からはみ出さない倍率にしてあるので、切れるのは透明な余白だけ */
 .color-card.mat-img-zoom > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
+/* ── COLORSチャート:フィールド(暗い展示面にチップが置かれている見え方) ──
+   対象は #colorOverlay / #colors のチャート7タブだけ。PARTS・NEW IN・詳細などは無関係。
+   段組みと位置・大きさは renderColorGrids() の CC_FIELD が決める(カード幅はフィールド幅に対する%)。
+   面:マットなチャコール #242424 + 細かいグレイン(SVGノイズ、白6%)+ 中央上寄りにごく薄い光(白3.5%→0) */
+#colorOverlay .sv-bg{background-color:#242424;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 75% 55% at 50% 40%, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 72%);
+  background-size:160px 160px,100% 100%;}
+/* グリッド(列)ではなくブロックにして、段(.cc-field-row)を縦に積む */
+#colors .color-grid.cc-field{display:block;padding:8px 0 20px;}
+/* 段の高さは JS が padding-bottom(カード高さ+縦ずれの余白10px)で確保する。段と段の間は30px */
+#colors .cc-field-row{position:relative;height:0;margin-bottom:30px;}
+/* カード:段の中に絶対配置。枠・背景なし。影や傾きが切れないよう overflow を開け、
+   content-visibility(描画の省略)と仮の大きさ指定は使わない(実機で幅が効かなくなる原因になるため) */
+#colors .cc-field .color-card{position:absolute;top:0;aspect-ratio:.72;overflow:visible;
+  content-visibility:visible;contain-intrinsic-size:none;contain:none;background:transparent;}
+/* 傾きは画像のラッパーにだけ付ける(画像自身の transform = 拡大とは別) */
+#colors .cc-field .tip-wrap{position:absolute;inset:0;transform-origin:50% 60%;}
+#colors .cc-field .tip-wrap > img{width:100%;height:100%;object-fit:contain;display:block;
+  filter:drop-shadow(0 5px 6px rgba(0,0,0,.40)) drop-shadow(0 12px 16px rgba(0,0,0,.22));}
+#colors .cc-field .color-card.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
+/* 画像が無い/読めないときの色の板:チップに近い角丸で、同じ接地影 */
+#colors .cc-field .color-card-swatch{position:absolute;inset:8% 14%;width:auto;height:auto;border-radius:46% 46% 40% 40% / 30% 30% 24% 24%;
+  box-shadow:0 5px 6px rgba(0,0,0,.40),0 12px 16px rgba(0,0,0,.22);}
+#colors .cc-field .fav-heart{top:0;left:-4px;}
 .color-name{position:absolute;bottom:0;left:0;right:0;padding:5px 3px;background:rgba(0,0,0,.7);font-size:.55rem;text-align:center;color:var(--white);opacity:0;transition:opacity .2s;}
 .fav-heart{position:absolute;top:5px;left:5px;width:22px;height:22px;z-index:2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;}
 .fav-heart:active{transform:scale(.85);}
@@ -1216,21 +1241,6 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
           <option value="new">New → Old</option>
           <option value="old">Old → New</option>
           <option value="category">カテゴリ順</option>
-        </select>
-      </div>
-    </div>
-    <div class="cc-control">
-      <span class="cc-mini-label">表示列数</span>
-      <div class="tab-select-wrap tab-select-wrap-sm">
-        <select class="tab-select tab-select-sm" id="ccColsSelect" onchange="setColorCols(this.value)">
-          <option value="3">3列</option>
-          <option value="4">4列</option>
-          <option value="5">5列</option>
-          <option value="6" selected>6列</option>
-          <option value="7">7列</option>
-          <option value="8">8列</option>
-          <option value="9">9列</option>
-          <option value="10">10列</option>
         </select>
       </div>
     </div>
@@ -2767,7 +2777,7 @@ function openColorOverlay() {
   const el = document.getElementById('colorOverlay');
   el.style.display = 'flex';
   // 直後にclassを付けないとtransitionが効かないため、1フレーム遅らせる
-  requestAnimationFrame(() => el.classList.add('open'));
+  requestAnimationFrame(() => { el.classList.add('open'); ccFieldRecheck(); });
 }
 function closeColorOverlay() {
   const el = document.getElementById('colorOverlay');
@@ -3427,12 +3437,15 @@ function matZoomFor(box) {
   const sTarget = (Z.target * ch) / ((box.b - box.t) * dh);          // 被写体の高さを目標に合わせる倍率
   const sSide = (cw / 2) / Math.max(Math.abs(L), Math.abs(R), 1e-6);    // 左右がはみ出さない上限
   const sVert = (ch / 2) / Math.max(Math.abs(T), Math.abs(B), 1e-6);    // 上下がはみ出さない上限
-  return Math.max(1, Math.min(sTarget, sSide, sVert, Z.max));
+  // ここでは丸めない(生の倍率)。範囲の丸めは applyMatZoom の clamp で行う
+  return Math.min(sTarget, sSide, sVert);
 }
 // 表示用の画像とは別に、測るためだけの画像を crossOrigin で読む
 // (表示用の img に crossOrigin を付けると、端末によって画像自体が出なくなることがあったため、表示側には付けない)
-function applyMatZoom(el, src, imgEl) {
-  const set = z => { if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
+// clamp = [下限, 上限]。省略時は従来どおり [1, MAT_ZOOM.max](縮小しない・最大1.39倍)
+function applyMatZoom(el, src, imgEl, clamp) {
+  const lo = clamp ? clamp[0] : 1, hi = clamp ? clamp[1] : MAT_ZOOM.max;
+  const set = raw => { const z = Math.max(lo, Math.min(hi, raw)); if (Math.abs(z - 1) > 0.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
   if (matZoomCache.has(src)) { set(matZoomCache.get(src)); return; }
   // 表示用 img が CORS 付きで読み込み済みなら、それ自体を直接測る(再ダウンロード不要)。
   // CORS付きで読めているのに測れない場合は「全面が不透明」等で測定対象外なので確定させる。
@@ -3443,7 +3456,7 @@ function applyMatZoom(el, src, imgEl) {
   const probe = new Image();
   probe.crossOrigin = 'anonymous';
   probe.decoding = 'async';
-  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector(':scope > img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
+  probe.onload = () => { const z = matZoomFor(matSubjectBox(probe)); matZoomCache.set(src, z); if (el.querySelector('img')) set(z); }; // 読み込み失敗で色の板に替わっていたら何もしない
   probe.onerror = () => { matZoomCache.set(src, 1); }; // 読めなければ拡大しない(エラーは出さない)
   probe.src = src;
 }
@@ -3489,6 +3502,44 @@ function trueSizeImgWidthMm(sizeVal, rec) {
   if (!isFinite(mm) || mm <= 0) return null;
   return Math.min(40, Math.max(0.5, mm)); // 異常値だけ丸める(0.8mm級の極小パーツは画像幅も1mm未満になり得る)
 }
+// ── COLORSチャートのフィールド配置 ──
+// 段は 3個 → 4個 → 5個 の繰り返し。各段の中心位置(%)は、前の段のチップの「隙間」に
+// 次の段のチップが座るように選んだ値(390px幅=フィールド354pxで、前の段のチップの中心と
+// 次の段のチップの中心が最低18px以上ずれる組み合わせ)。1周ごとに左右を反転する。
+// w はカード幅(フィールド幅に対する%):354px幅で 3個=63px / 4個=56px / 5個=50px。
+// (被写体ズーム 0.90〜1.15 をかけても、3個の段は約60〜72px、5個の段は約49〜58pxに収まる)
+// 画面が広い(iPad等)ときは、この並び(1区画=約360px)を横に複数並べる。
+const CC_FIELD = {
+  rows: [
+    { n: 3, w: 17.8, c: [13.8, 44.4, 74.9] },
+    { n: 4, w: 15.8, c: [18.9, 39.3, 59.6, 79.9] },
+    { n: 5, w: 14.1, c: [8.8, 29.1, 49.4, 69.8, 90.1] },
+  ],
+  segWidth: 360,           // 1区画の目安の幅(px)
+  tiltMax: 3,              // 傾き ±3度まで(0.5度刻み)
+  jitterMax: 10,           // 縦ずれ 0〜10px
+  zoomClamp: [0.90, 1.15], // 被写体ズームの範囲(このチャートだけ)
+};
+let ccFieldLastSegs = 0;
+function ccFieldSegments(grid) {
+  const w = (grid && grid.clientWidth) || (Math.min(window.innerWidth, 1200) - 36);
+  return Math.max(1, Math.round(w / CC_FIELD.segWidth));
+}
+// 文字列から決まった数を作る(FNV-1a)。傾き・縦ずれを毎回同じにするため
+function ccFieldHash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+// 画面幅が変わって区画の数が変わったときだけ並べ直す
+function ccFieldRecheck() {
+  if (!colorGridBuilt) return;
+  const g = document.getElementById('color-ALL-grid');
+  if (!g || !g.clientWidth) return;
+  if (ccFieldSegments(g) !== ccFieldLastSegs) renderColorGrids();
+}
+let ccFieldResizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(ccFieldResizeTimer); ccFieldResizeTimer = setTimeout(ccFieldRecheck, 200); });
 function renderColorGrids() {
   // カテゴリのタブ名(HTMLのid用)と、Notionのカテゴリ名の対応。
   // グリッターは「ラメ入りジェル(Glitter Gel)」と「粉ラメ(Glitter Powder)」の2つに分けている。
@@ -3522,74 +3573,80 @@ function renderColorGrids() {
       return ccSortOrder === 'old' ? ta - tb : tb - ta;
     });
     if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
-    // 推し色の大きな表示(縦長1列×2行): loade/CLETOの色から選ぶ。間隔は8〜16枚の
-    // 範囲で不規則に空ける(間隔列 TALL_GAPS は固定で、並び順だけから決まるため、
-    // 同じリストでは再描画しても配置は安定する)。目標位置に最も近い候補を採る。
-    // 末尾近くは縦長の下半分が最後の行に1枚だけはみ出す形になるため対象外にする。
-    const TALL_GAPS = [10, 14, 8, 15, 11, 16, 9, 13, 12, 8];
-    const tallIdx = new Set();
-    {
-      const colsNow = parseInt(getComputedStyle(document.getElementById('colors')).getPropertyValue('--cc-cols'), 10) || 6;
-      const tailGuard = Math.max(colsNow, 6); // 後ろにこの枚数が続かないものは縦長にしない
-      const cand = [];
-      filtered.forEach((c, i) => { if ((c.maker === 'loade' || c.maker === 'CLETO') && i < filtered.length - tailGuard) cand.push(i); });
-      let prev = -1, k = 0;
-      while (cand.length) {
-        let pool;
-        if (prev < 0) pool = cand;
-        else {
-          pool = cand.filter(i => i >= prev + 8 && i <= prev + 16);
-          if (!pool.length) pool = cand.filter(i => i > prev + 16);
-        }
-        pool = pool.filter(i => i > prev);
-        if (!pool.length) break;
-        const target = prev < 0 ? cand[0] : prev + TALL_GAPS[k % TALL_GAPS.length];
-        let chosen = pool[0], best = Infinity;
-        pool.forEach(i => { const d = Math.abs(i - target); if (d < best) { best = d; chosen = i; } });
-        tallIdx.add(chosen);
-        prev = chosen; k++;
+    grid.classList.add('cc-field');
+    const segs = ccFieldSegments(grid);
+    let pos = 0, rowIdx = 0;
+    while (pos < filtered.length) {
+      const def = CC_FIELD.rows[rowIdx % CC_FIELD.rows.length];
+      const mirror = Math.floor(rowIdx / CC_FIELD.rows.length) % 2 === 1; // 1周ごとに左右を反転して単調さを避ける
+      const per = def.n * segs;
+      const items = filtered.slice(pos, pos + per);
+      // 段の中の位置(フィールド幅に対する%):中心位置とカード幅
+      let centers;
+      if (items.length === per) {
+        centers = [];
+        for (let k = 0; k < segs; k++) def.c.forEach(c => centers.push((k * 100 + (mirror ? 100 - c : c)) / segs));
+      } else {
+        // 最後の半端な段:同じ大きさのまま、均等に並べる
+        centers = items.map((_, i) => (i + 0.5) * 100 / items.length);
       }
-    }
-    filtered.forEach((c, cardIdx) => {
-      const el = document.createElement('div');
-      el.className = 'color-card';
-      const isTall = tallIdx.has(cardIdx);
-      if (isTall) el.classList.add('tall');
-      // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
-      // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
-      const gridImg = c.thumbSmall || c.thumb || '';
-      if (gridImg) {
-        const img = document.createElement('img');
-        img.alt = c.name || '';
-        prepGridImg(img, gridImg);
-        // 表示用の画像が読み込めたら、被写体の大きさを測って倍率を決める(1回だけ)
-        let zoomed = false;
-        const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img); };
-        img.addEventListener('load', zoom);
-        loadGridImg(img, gridImg, () => {
-          el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
+      const wPct = def.w / segs;
+      const row = document.createElement('div');
+      row.className = 'cc-field-row';
+      // 段の高さ = カードの高さ(幅÷0.72)+ 縦ずれ用の余白
+      row.style.paddingBottom = 'calc(' + (wPct / 0.72).toFixed(3) + '% + ' + CC_FIELD.jitterMax + 'px)';
+      items.forEach((c, i) => {
+        const el = document.createElement('div');
+        el.className = 'color-card';
+        el.style.width = wPct.toFixed(3) + '%';
+        el.style.left = (centers[i] - wPct / 2).toFixed(3) + '%';
+        // 傾きと縦ずれ:名前+メーカーのハッシュから決める(同じ色はいつも同じ値)
+        const h = ccFieldHash((c.name || '') + '|' + (c.maker || ''));
+        el.style.top = (Math.floor(h / 256) % (CC_FIELD.jitterMax + 1)) + 'px';
+        const tilt = ((h % 13) - 6) * (CC_FIELD.tiltMax / 6); // -3〜+3度
+        const tw = document.createElement('div');
+        tw.className = 'tip-wrap';
+        tw.style.transform = 'rotate(' + tilt.toFixed(2) + 'deg)';
+        // サムネイルが未設定でも、商材画像(詳細用)があれば表示する。小さく並ぶだけなのでthumbSmallを優先
+        const gridImg = c.thumbSmall || c.thumb || '';
+        if (gridImg) {
+          const img = document.createElement('img');
+          img.alt = c.name || '';
+          prepGridImg(img, gridImg);
+          // 読み込めたら被写体の大きさを測って倍率を決める(1回だけ)。フィールドでは 0.90〜1.15 に丸める
+          let zoomed = false;
+          const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img, CC_FIELD.zoomClamp); };
+          img.addEventListener('load', zoom);
+          loadGridImg(img, gridImg, () => {
+            el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
+            const sw = document.createElement('div');
+            sw.className = 'color-card-swatch';
+            sw.style.background = c.css || '#cccccc';
+            img.replaceWith(sw);
+          }, (key === 'ALL' && pos + i < 12) ? { eager: true } : null);
+          if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
+          tw.appendChild(img);
+        } else {
           const sw = document.createElement('div');
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
-          img.replaceWith(sw);
-        }, ((key === 'ALL' && cardIdx < 12) || isTall) ? { eager: true } : null);
-        if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
-        el.appendChild(img);
-      } else {
-        const sw = document.createElement('div');
-        sw.className = 'color-card-swatch';
-        sw.style.background = c.css || '#cccccc';
-        el.appendChild(sw);
-      }
-      el.appendChild(buildFavHeart(c));
-      const label = document.createElement('span');
-      label.className = 'color-name';
-      label.textContent = c.name || '';
-      el.appendChild(label);
-      el.onclick = () => openColorDetail(c);
-      grid.appendChild(el);
-    });
+          tw.appendChild(sw);
+        }
+        el.appendChild(tw);
+        el.appendChild(buildFavHeart(c));
+        const label = document.createElement('span');
+        label.className = 'color-name';
+        label.textContent = c.name || '';
+        el.appendChild(label);
+        el.onclick = () => openColorDetail(c);
+        row.appendChild(el);
+      });
+      grid.appendChild(row);
+      pos += items.length;
+      rowIdx++;
+    }
   });
+  ccFieldLastSegs = ccFieldSegments(document.getElementById('color-ALL-grid'));
 }
 
 // 詳細ポップアップの「戻る」履歴。使用アイテム/代替品リンクで別のアイテムへ飛んだ時、
