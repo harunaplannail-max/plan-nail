@@ -173,8 +173,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    対象はカラーチャート(#colors / #colorOverlay 配下)だけ。PARTS・NEW IN・
    お気に入り等、.color-card / .color-grid の共用先には効かせないよう、
    セレクタは全て #colors / #colorOverlay で絞る。機能は一切変えていない。 */
-/* 展示面: 深いチャコール #242424 + ごく薄いマットな粒子(装飾グラデーションは無し) */
-#colorOverlay .sv-bg{background-color:#242424;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px;}
+/* 展示面: 深いチャコール #242424 + ごく薄いマットな粒子。
+   粒子の下には、中央(50% 30%)が僅かに明るく周囲へ落ちる「撮られた面」の
+   光だけを敷く(装飾グラデーションではなく、写真の周辺減光としてごく薄く) */
+#colorOverlay .sv-bg{background-color:#242424;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(ellipse at 50% 30%, #2b2b2b 0%, #242424 75%);background-size:160px 160px,100% 100%;}
 /* グリッドの「間」: 列数が少ないほど広く取る(setColorCols が --cc-gap を出す。未設定時は12px) */
 #colors .color-grid{gap:var(--cc-gap,12px);}
 /* 枠なし: セルでの切り抜きをやめ、チップが面の上に直接置かれている見え方にする。
@@ -197,7 +199,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    段の寄せ方(space-between / space-around)を交互に変え、次の段のチップが
    前の段の隙間に座る見え方にする。傾きは画像のラッパー(.tip-wrap)にだけ付け、
    画像自身の transform(alpha bbox ズーム)とは分ける。対象は #colors のみ */
-#colors .cc-field{display:flex;flex-direction:column;gap:30px;padding:10px 2px 14px;}
+/* 左右のパディングは、チップの傾きと接地影(下方向+ぼかし)が画面端で
+   切れたり横スクロールを生んだりしないための逃げ */
+#colors .cc-field{display:flex;flex-direction:column;gap:30px;padding:10px 12px 16px;}
 #colors .cc-field-row{display:flex;align-items:flex-start;}
 #colors .cc-field-row.jb{justify-content:space-between;}
 #colors .cc-field-row.ja{justify-content:space-around;}
@@ -205,6 +209,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #colors .cc-field .color-card{flex:0 0 auto;max-width:250px;}
 #colors .tip-wrap{width:100%;height:100%;}
 #colors .color-card.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
+/* フィールドの接地影: 「置かれている」手がかり。チップの形(alpha)をなぞる
+   2枚重ねで、真下に寄せた濃い影(接地点)+ 広がって消える薄い影(環境光)。
+   光は真上から一方向に統一。#colors 全体の単層の薄い影より意図的に強くする */
+#colors .cc-field .color-card img{filter:drop-shadow(0 5px 6px rgba(0,0,0,.40)) drop-shadow(0 12px 16px rgba(0,0,0,.22));}
+#colors .cc-field .color-card-swatch{box-shadow:0 5px 6px rgba(0,0,0,.40),0 12px 16px rgba(0,0,0,.22);}
 
 /* ── POPULAR(直近30日の閲覧数で自動選出する人気カラー) ── */
 .featured-shelf{margin-bottom:26px;}
@@ -3458,8 +3467,11 @@ function matZoomFor(box) {
 }
 // 表示用の画像とは別に、測るためだけの画像を crossOrigin で読む
 // (表示用の img に crossOrigin を付けると、端末によって画像自体が出なくなることがあったため、表示側には付けない)
-function applyMatZoom(el, src, imgEl) {
-  const set = z => { if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
+function applyMatZoom(el, src, imgEl, clamp) {
+  // clamp(任意・[下限,上限]): 倍率キャッシュは従来どおり素の値を共有し、
+  // 適用時にだけ丸める。COLORSフィールドだけ [0.9, 1.15] を渡して
+  // 「枠いっぱいに広げない穏やかな正規化」にし、他の表示は従来どおり。
+  const set = z => { if (clamp) z = Math.min(clamp[1], Math.max(clamp[0], z)); if (z > 1.005) { el.classList.add('mat-img-zoom'); el.style.setProperty('--mat-zoom', z.toFixed(3)); } };
   if (matZoomCache.has(src)) { set(matZoomCache.get(src)); return; }
   // 表示用 img が CORS 付きで読み込み済みなら、それ自体を直接測る(再ダウンロード不要)。
   // CORS付きで読めているのに測れない場合は「全面が不透明」等で測定対象外なので確定させる。
@@ -3566,7 +3578,13 @@ function renderColorGrids() {
     const FIELD_PATTERN = [3, 4, 5, 4];
     // チップの表示幅(コンテナ幅に対する%)。段の個数が少ない段ほど僅かに
     // 大きくするが、段同士の差は±10%以内に収める(ほぼ均一に見える範囲)。
-    const FIELD_WIDTH = { 1: 19, 2: 19, 3: 19.3, 4: 18.5, 5: 17.6 };
+    // 2026-11-21: 「画像が並んでいる」ではなく「小さな実物が置かれている」
+    // 見え方にするため、以前の幅(19/19/19.3/18.5/17.6)の約0.66倍に縮小。
+    // チップの周りに空気が残り、1画面に収まる数も増える。
+    const FIELD_WIDTH = { 1: 12.5, 2: 12.5, 3: 12.7, 4: 12.2, 5: 11.6 };
+    // フィールドでは alpha bbox ズームを [0.90, 1.15] に丸める(applyMatZoom の
+    // clamp)。枠いっぱいに広げず、チップ同士の自然な大きさの差を残すため。
+    const FIELD_ZOOM_CLAMP = [0.9, 1.15];
     const field = document.createElement('div');
     field.className = 'cc-field';
     let renderPos = 0; // このタブで描画した順序(先頭12枚の eager 判定用・従来どおり)
@@ -3577,7 +3595,7 @@ function renderColorGrids() {
       const row = document.createElement('div');
       // 1個だけの段は中央、2個の段は均等寄せ、それ以外は段ごとに交互
       row.className = 'cc-field-row ' + (items.length === 1 ? 'jc' : items.length === 2 ? 'ja' : (rowIdx % 2 === 0 ? 'jb' : 'ja'));
-      const wPct = FIELD_WIDTH[items.length] || (88 / items.length);
+      const wPct = FIELD_WIDTH[items.length] || (58 / items.length);
       items.forEach(c => {
         const el = document.createElement('div');
         el.className = 'color-card';
@@ -3601,7 +3619,7 @@ function renderColorGrids() {
           prepGridImg(img, gridImg);
           // 表示用の画像が読み込めたら、被写体の大きさを測って倍率を決める(1回だけ)
           let zoomed = false;
-          const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img); };
+          const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img, FIELD_ZOOM_CLAMP); };
           img.addEventListener('load', zoom);
           loadGridImg(img, gridImg, () => {
             el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
