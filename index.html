@@ -2538,6 +2538,36 @@ function colorFamilyOf(hex) {
   if (inH(R.purpleH)) return 'purple';
   return null;
 }
+// パウダー系(Chrome / Glitter Powder)は、測った色ではなく「光・効果の色」で系統を持つ(2026-11-21 Haruna決定)。
+// ここに無い商材は colorFamilyOf の自動判定に任せる。
+const POWDER_FAMILY = {
+  'クリスタルグラス ヴェールパウダー': 'pink',
+  'フェアリー ヴェールパウダー': 'pink',
+  'プラチナ ヴェールパウダー': 'white',
+  'T-NA01 オレンジ': 'orange',
+  'T-NA02 ピンク': 'pink',
+  'T-NA03 パープル': 'purple',
+  'T-NA04 ブルー': 'blue',
+  'T-NA05 グリーン': 'green',
+  'T-NA06 イエロー': 'yellow',
+  'T-NA07 ビビッドピンク': 'pink',
+  'T-NA08 スカイブルー': 'blue',
+  'T-NA09 ライムグリーン': 'green',
+  'MP-02 Rich Gold': 'yellow',
+  'MP-06 Rose Luxe': 'pink',
+  'Glitter Lime Gold': 'yellow',
+  'Glitter Champagne Gold': 'yellow',
+  'Glitter Beige Gold': 'yellow',
+  'Glitter Maroon': 'red',
+  'Glitter Burgundy': 'red',
+  'Glitter Aurora': 'white',
+  'Glitter Snow': 'white',
+  'Glitter Dusty Pink': 'pink',
+};
+function familyOfItem(m) {
+  if (m && m.name) { const f = POWDER_FAMILY[String(m.name).trim()]; if (f) return f; }
+  return colorFamilyOf(m ? m.css : null);
+}
 function buildColorFamilyBar() {
   const bar = document.getElementById('ccColorBar'); if (!bar) return;
   bar.innerHTML = '';
@@ -3563,7 +3593,7 @@ const CC_FIELD = {
 // 4. CSS値が無い(#cccccc 扱い)ものは最後に名前順
 const CC_HUE_ORDER = ['red', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
 function ccHueSortKey(m) {
-  const c = hexToHsl(m.css), f = colorFamilyOf(m.css);
+  const c = hexToHsl(m.css), f = familyOfItem(m);
   if (!c || !f) return { g: 2, b: 0, l: 0 };
   const beige = f === 'brown' && c.l > COLOR_RULES.brownMaxL;
   if (f === 'white' || f === 'black' || beige) return { g: 0, b: 0, l: c.l };
@@ -3710,7 +3740,7 @@ function renderColorGrids() {
         if (!moods.includes(ccMoodFilter)) return false;
       }
       // 色別:CSS値が入っていないものは、系統を選んでいるときだけ隠す
-      if (ccColorFilter !== 'ALL' && colorFamilyOf(m.css) !== ccColorFilter) return false;
+      if (ccColorFilter !== 'ALL' && familyOfItem(m) !== ccColorFilter) return false;
       return true;
     });
     if (ccSortOrder === 'hue') {
