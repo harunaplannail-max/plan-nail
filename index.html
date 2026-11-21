@@ -289,14 +289,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
     radial-gradient(ellipse 75% 55% at 50% 40%, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 72%);
   background-size:160px 160px,100% 100%;}
 /* グリッド(列)ではなくブロックにして、段(.cc-field-row)を縦に積む */
-#colors .color-grid.cc-field{display:block;padding:8px 0 20px;}
+/* 配列のまわりの余白:左右16px・上18px・下26px(カード位置の%はこの内側の幅が基準) */
+#colors .color-grid.cc-field{display:block;padding:18px 16px 26px;}
 /* 段の高さは JS が padding-bottom(カード高さ+縦ずれの余白10px)で確保する。段と段の間は30px */
 #colors .cc-field-row{position:relative;height:0;margin-bottom:30px;}
 /* カード:段の中に絶対配置。枠・背景なし。影や傾きが切れないよう overflow を開け、
    content-visibility(描画の省略)と仮の大きさ指定は使わない(実機で幅が効かなくなる原因になるため) */
 #colors .cc-field .color-card{position:absolute;top:0;aspect-ratio:.72;overflow:visible;
   content-visibility:visible;contain-intrinsic-size:none;contain:none;background:transparent;}
-/* 傾きは画像のラッパーにだけ付ける(画像自身の transform = 拡大とは別) */
+/* 画像のラッパー(傾きは付けない。画像自身の transform = 拡大とは別) */
 #colors .cc-field .tip-wrap{position:absolute;inset:0;transform-origin:50% 60%;}
 #colors .cc-field .tip-wrap > img{width:100%;height:100%;object-fit:contain;display:block;
   filter:drop-shadow(0 5px 6px rgba(0,0,0,.40)) drop-shadow(0 12px 16px rgba(0,0,0,.22));}
@@ -1238,6 +1239,7 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
       <span class="cc-mini-label">並べ替え</span>
       <div class="tab-select-wrap tab-select-wrap-sm">
         <select class="tab-select tab-select-sm" id="ccSortSelect" onchange="ccSortOrder=this.value;renderColorGrids();">
+          <option value="hue" selected>色の流れ</option>
           <option value="new">New → Old</option>
           <option value="old">Old → New</option>
           <option value="category">カテゴリ順</option>
@@ -2433,7 +2435,7 @@ function closeMenu() { document.getElementById('smenu').classList.add('closed');
 // ── RENDER PUBLIC ──
 let ccMakerFilter = 'ALL';
 let ccMoodFilter = 'ALL';
-let ccSortOrder = 'new';
+let ccSortOrder = 'hue'; // 初期は「色の流れ」
 let ccColorFilter = 'ALL';
 
 // TOY's by INITY / INITY は今後あまり取り扱わないため、デフォルト(新しい順)では一覧の末尾に回す
@@ -3503,33 +3505,37 @@ function trueSizeImgWidthMm(sizeVal, rec) {
   return Math.min(40, Math.max(0.5, mm)); // 異常値だけ丸める(0.8mm級の極小パーツは画像幅も1mm未満になり得る)
 }
 // ── COLORSチャートのフィールド配置 ──
-// 段は 3個 → 4個 → 5個 の繰り返し。各段の中心位置(%)は、前の段のチップの「隙間」に
-// 次の段のチップが座るように選んだ値(390px幅=フィールド354pxで、前の段のチップの中心と
-// 次の段のチップの中心が最低18px以上ずれる組み合わせ)。1周ごとに左右を反転する。
-// w はカード幅(フィールド幅に対する%):354px幅で 3個=63px / 4個=56px / 5個=50px。
-// (被写体ズーム 0.90〜1.15 をかけても、3個の段は約60〜72px、5個の段は約49〜58pxに収まる)
-// 画面が広い(iPad等)ときは、この並び(1区画=約360px)を横に複数並べる。
+// きっちりした整列:全段が同じ個数(1区画5個)・同じ中心位置・同じカード幅で、縦の列もまっすぐ通す。
+// 傾き・縦ずれ・段ごとの反転は無し。段と段の間は CSS の30px で全段同じ。
+// c は各チップの中心位置、w はカード幅(どちらも配列の内側の幅に対する%)。
+// 390px幅では内側322pxで、カード幅15.5%=約50px、中心の間隔20%=約64px。
+// (被写体ズーム 0.90〜1.15 をかけても、見た目幅は約49〜58pxに収まる)
+// 画面が広い(iPad等)ときは、この5個の並び(1区画=約360px)を横に複数並べる。
 const CC_FIELD = {
-  rows: [
-    { n: 3, w: 17.8, c: [13.8, 44.4, 74.9] },
-    { n: 4, w: 15.8, c: [18.9, 39.3, 59.6, 79.9] },
-    { n: 5, w: 14.1, c: [8.8, 29.1, 49.4, 69.8, 90.1] },
-  ],
+  cols: 5,
+  w: 15.5,
+  c: [10, 30, 50, 70, 90],
   segWidth: 360,           // 1区画の目安の幅(px)
-  tiltMax: 3,              // 傾き ±3度まで(0.5度刻み)
-  jitterMax: 10,           // 縦ずれ 0〜10px
   zoomClamp: [0.90, 1.15], // 被写体ズームの範囲(このチャートだけ)
 };
+// 「色の流れ」の並べ替えの鍵。g=グループ(0:無彩色・低彩度 / 1:有彩色 / 2:CSS値なし)、
+// b=有彩色の中の色の順番、l=明るさ(大きいほど先)。
+// 1. 白・クリア / ベージュ / グレー / 黒(colorFamilyOf が white・black、または明るく彩度の低いブラウン=ベージュ)は先頭で、明るい順
+// 2. 有彩色は 赤 → 茶(暗いブラウン) → オレンジ → 黄 → 緑 → 青 → 紫 → ピンク の順で、同じ色の中は明るい順
+// 3. グリッター/マグネットも、CSS値の色でそのまま同じ位置に入る
+// 4. CSS値が無い(#cccccc 扱い)ものは最後に名前順
+const CC_HUE_ORDER = ['red', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
+function ccHueSortKey(m) {
+  const c = hexToHsl(m.css), f = colorFamilyOf(m.css);
+  if (!c || !f) return { g: 2, b: 0, l: 0 };
+  const beige = f === 'brown' && c.l > COLOR_RULES.brownMaxL;
+  if (f === 'white' || f === 'black' || beige) return { g: 0, b: 0, l: c.l };
+  return { g: 1, b: CC_HUE_ORDER.indexOf(f), l: c.l };
+}
 let ccFieldLastSegs = 0;
 function ccFieldSegments(grid) {
   const w = (grid && grid.clientWidth) || (Math.min(window.innerWidth, 1200) - 36);
   return Math.max(1, Math.round(w / CC_FIELD.segWidth));
-}
-// 文字列から決まった数を作る(FNV-1a)。傾き・縦ずれを毎回同じにするため
-function ccFieldHash(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h >>> 0;
 }
 // 画面幅が変わって区画の数が変わったときだけ並べ直す
 function ccFieldRecheck() {
@@ -3560,7 +3566,12 @@ function renderColorGrids() {
       if (ccColorFilter !== 'ALL' && colorFamilyOf(m.css) !== ccColorFilter) return false;
       return true;
     });
-    filtered.sort((a, b) => {
+    if (ccSortOrder === 'hue') {
+      // 色の流れ:先に並べ替えの鍵を作ってから並べる(1件ずつHSLを計算し直さない)
+      const keyed = filtered.map(m => ({ m, k: ccHueSortKey(m) }));
+      keyed.sort((a, b) => a.k.g - b.k.g || a.k.b - b.k.b || b.k.l - a.k.l || String(a.m.name || '').localeCompare(String(b.m.name || ''), 'ja'));
+      filtered.length = 0; keyed.forEach(x => filtered.push(x.m));
+    } else filtered.sort((a, b) => {
       if (ccSortOrder === 'category') {
         return (a.category||'').localeCompare(b.category||'');
       }
@@ -3575,38 +3586,25 @@ function renderColorGrids() {
     if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
     grid.classList.add('cc-field');
     const segs = ccFieldSegments(grid);
-    let pos = 0, rowIdx = 0;
+    let pos = 0;
     while (pos < filtered.length) {
-      const def = CC_FIELD.rows[rowIdx % CC_FIELD.rows.length];
-      const mirror = Math.floor(rowIdx / CC_FIELD.rows.length) % 2 === 1; // 1周ごとに左右を反転して単調さを避ける
-      const per = def.n * segs;
+      const per = CC_FIELD.cols * segs;
       const items = filtered.slice(pos, pos + per);
-      // 段の中の位置(フィールド幅に対する%):中心位置とカード幅
-      let centers;
-      if (items.length === per) {
-        centers = [];
-        for (let k = 0; k < segs; k++) def.c.forEach(c => centers.push((k * 100 + (mirror ? 100 - c : c)) / segs));
-      } else {
-        // 最後の半端な段:同じ大きさのまま、均等に並べる
-        centers = items.map((_, i) => (i + 0.5) * 100 / items.length);
-      }
-      const wPct = def.w / segs;
+      // 中心位置は全段共通(最後の半端な段も同じ列に左から詰めるので、縦の列が崩れない)
+      const centers = [];
+      for (let k = 0; k < segs; k++) CC_FIELD.c.forEach(c => centers.push((k * 100 + c) / segs));
+      const wPct = CC_FIELD.w / segs;
       const row = document.createElement('div');
       row.className = 'cc-field-row';
-      // 段の高さ = カードの高さ(幅÷0.72)+ 縦ずれ用の余白
-      row.style.paddingBottom = 'calc(' + (wPct / 0.72).toFixed(3) + '% + ' + CC_FIELD.jitterMax + 'px)';
+      // 段の高さ = カードの高さ(幅÷0.72)。全段同じ
+      row.style.paddingBottom = (wPct / 0.72).toFixed(3) + '%';
       items.forEach((c, i) => {
         const el = document.createElement('div');
         el.className = 'color-card';
         el.style.width = wPct.toFixed(3) + '%';
         el.style.left = (centers[i] - wPct / 2).toFixed(3) + '%';
-        // 傾きと縦ずれ:名前+メーカーのハッシュから決める(同じ色はいつも同じ値)
-        const h = ccFieldHash((c.name || '') + '|' + (c.maker || ''));
-        el.style.top = (Math.floor(h / 256) % (CC_FIELD.jitterMax + 1)) + 'px';
-        const tilt = ((h % 13) - 6) * (CC_FIELD.tiltMax / 6); // -3〜+3度
         const tw = document.createElement('div');
-        tw.className = 'tip-wrap';
-        tw.style.transform = 'rotate(' + tilt.toFixed(2) + 'deg)';
+        tw.className = 'tip-wrap'; // 傾きは付けない(無回転)
         // サムネイルが未設定でも、商材画像(詳細用)があれば表示する。小さく並ぶだけなのでthumbSmallを優先
         const gridImg = c.thumbSmall || c.thumb || '';
         if (gridImg) {
@@ -3643,7 +3641,6 @@ function renderColorGrids() {
       });
       grid.appendChild(row);
       pos += items.length;
-      rowIdx++;
     }
   });
   ccFieldLastSegs = ccFieldSegments(document.getElementById('color-ALL-grid'));
@@ -5019,7 +5016,7 @@ function ccActiveFilterCount() {
   if (cat && cat.value !== 'ALL') n++;
   if (ccMakerFilter !== 'ALL') n++;
   if (ccMoodFilter !== 'ALL') n++;
-  if (ccSortOrder !== 'new') n++;
+  if (ccSortOrder !== 'hue') n++; // 初期値(色の流れ)以外を選んでいるときだけ数える
   return n;
 }
 function updateCcFilterToggle() {
