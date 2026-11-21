@@ -181,6 +181,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .featured-code{font-family:'Special Elite','Kosugi',sans-serif;font-size:.6rem;color:var(--white);margin-top:6px;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .parts-grid{grid-template-columns:repeat(var(--parts-cols,6),1fr);}
+/* ── PARTSチャート:COLORSと同じ「置かれた面」 ──
+   面(#242424+グレイン+薄い光)は #colorOverlay と同じ規則を共有。
+   並びは固定の整列:1区画5列(画面が広いときは区画を横に足して10列・15列)。列の間14px・段の間30px、
+   配列のまわりは上18px・左右16px・下26px。傾き・ずらしは無し。
+   カードは枠・背景なし。影は COLORS と同じ2層(画像の形に沿う drop-shadow)。
+   石の大きさ(applyChartStoneScale / --pscale)はそのまま使う。影は拡大縮小の影響を受けないよう、
+   画像ではなくラッパー(.part-shadow)に付ける。ラッパーはカードより14px広い範囲で切り抜くので、
+   拡大した画像の透明な余白が隣に出ず、影だけが外へ広がる */
+#parts .parts-grid{column-gap:14px;row-gap:30px;padding:18px 16px 26px;}
+#parts .parts-grid .color-card{overflow:visible;content-visibility:visible;contain-intrinsic-size:none;contain:none;background:transparent;border:0;}
+#parts .parts-grid .part-shadow{position:absolute;inset:-14px;padding:14px;overflow:hidden;pointer-events:none;
+  filter:drop-shadow(0 5px 6px rgba(0,0,0,.40)) drop-shadow(0 12px 16px rgba(0,0,0,.22));}
+#parts .parts-grid .part-shadow > img{filter:none;}
+#parts .parts-grid .color-card.sized .part-shadow > img,#parts .parts-grid .color-card.sized .part-shadow > .color-card-swatch{transform:scale(var(--pscale,1));transform-origin:center;}
+
 /* 銀河ジャンルマップへの入り口。惑星がホームの上に直接浮かぶ、枠なしの透明な窓 */
 .galaxy-entry{display:block;margin:10px 4px 22px;text-decoration:none;text-align:center;-webkit-tap-highlight-color:transparent;}
 .galaxy-entry .ge-frame{display:block;height:300px;}
@@ -284,7 +299,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    対象は #colorOverlay / #colors のチャート7タブだけ。PARTS・NEW IN・詳細などは無関係。
    段組みと位置・大きさは renderColorGrids() の CC_FIELD が決める(カード幅はフィールド幅に対する%)。
    面:マットなチャコール #242424 + 細かいグレイン(SVGノイズ、白6%)+ 中央上寄りにごく薄い光(白3.5%→0) */
-#colorOverlay .sv-bg{background-color:#242424;
+#colorOverlay .sv-bg,#partsOverlay .sv-bg{background-color:#242424;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
     radial-gradient(ellipse 75% 55% at 50% 40%, rgba(255,255,255,.035) 0%, rgba(255,255,255,0) 72%);
   background-size:160px 160px,100% 100%;}
@@ -300,12 +315,48 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 /* 画像のラッパー(傾きは付けない。画像自身の transform = 拡大とは別) */
 #colors .cc-field .tip-wrap{position:absolute;inset:0;transform-origin:50% 60%;}
 #colors .cc-field .tip-wrap > img{width:100%;height:100%;object-fit:contain;display:block;
-  filter:drop-shadow(0 5px 6px rgba(0,0,0,.40)) drop-shadow(0 12px 16px rgba(0,0,0,.22));}
+  filter:drop-shadow(0 2px 3px rgba(40,42,52,.55)) drop-shadow(0 10px 15px rgba(40,42,52,.30));}
 #colors .cc-field .color-card.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
 /* 画像が無い/読めないときの色の板:チップに近い角丸で、同じ接地影 */
 #colors .cc-field .color-card-swatch{position:absolute;inset:8% 14%;width:auto;height:auto;border-radius:46% 46% 40% 40% / 30% 30% 24% 24%;
-  box-shadow:0 5px 6px rgba(0,0,0,.40),0 12px 16px rgba(0,0,0,.22);}
+  box-shadow:0 2px 3px rgba(40,42,52,.55),0 10px 15px rgba(40,42,52,.30);}
 #colors .cc-field .fav-heart{top:0;left:-4px;}
+/* ── COLORS:冷蔵庫ボード ──
+   面:サロンの冷蔵庫(ブラッシュドシルバー)の写真。面は画面に固定された1枚の層(.sv-bg)なので、
+   写真1枚を cover で画面全体に敷く(繰り返さないので継ぎ目が出ない)。読み込み前・失敗時は近い銀色の地。
+   チップは面の上をスクロールする。PARTS の面(#partsOverlay)は変えない */
+#colorOverlay .sv-bg{background:#c5c7cb url('https://lh3.googleusercontent.com/d/1fsjBdxYuzzTR1NpxXX3yAi-5ckmVvS1o=w1200-rp') center/cover no-repeat;}
+#colorOverlay .sv-topbar{background:linear-gradient(to bottom,rgba(255,255,255,.35),transparent);}
+#colorOverlay .sv-back,#colorOverlay .sv-title{color:#222;}
+#colorOverlay .cc-mini-label{color:#444;}
+#colorOverlay .cc-filter-toggle{color:#222;}
+#colorOverlay .featured-title,#colorOverlay .featured-code{color:#222;}
+#colorOverlay .cc-color-btn{color:rgba(34,34,34,.72);background:rgba(255,255,255,.5);padding:4px 10px 4px 6px;border-radius:999px;}
+#colorOverlay .cc-color-btn.active{color:#111;background:rgba(255,255,255,.78);}
+#colorOverlay .cc-color-dot{box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);}
+#colorOverlay .cc-color-btn.active .cc-color-dot{outline-color:rgba(34,34,34,.85);}
+#colorOverlay .tab-select{color:#222;background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.12);
+  box-shadow:0 4px 14px rgba(40,42,52,.16), inset 0 1px 1px rgba(255,255,255,.7);}
+#colorOverlay .tab-select-wrap::after{color:#444;}
+/* 挿入カード(カテゴリカード/写真カード)。マグネットで留めた紙のように、面に強めの影 */
+#colors .cc-board-card{position:relative;margin:0 0 30px;border-radius:3px;background-color:#3a3a3e;background-position:center;background-size:cover;background-repeat:no-repeat;
+  box-shadow:0 2px 3px rgba(40,42,52,.55),0 10px 15px rgba(40,42,52,.30);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+#colors .cc-board-card.cat{padding:40px 14px 18px;}
+#colors .cc-board-label{position:absolute;top:13px;left:16px;font-family:'Special Elite','Kosugi',sans-serif;font-size:.72rem;letter-spacing:.3em;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.45);}
+#colors .cc-board-chips{display:flex;justify-content:space-evenly;align-items:flex-start;}
+#colors .cc-card-chip{position:relative;aspect-ratio:.72;flex:0 0 auto;cursor:pointer;}
+#colors .cc-card-chip .tip-wrap{position:absolute;inset:0;}
+#colors .cc-card-chip .tip-wrap > img{width:100%;height:100%;object-fit:contain;display:block;
+  filter:drop-shadow(0 2px 3px rgba(40,42,52,.55)) drop-shadow(0 10px 15px rgba(40,42,52,.30));}
+#colors .cc-card-chip.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
+#colors .cc-card-chip .color-card-swatch{position:absolute;inset:8% 14%;width:auto;height:auto;border-radius:46% 46% 40% 40% / 30% 30% 24% 24%;
+  box-shadow:0 2px 3px rgba(40,42,52,.55),0 10px 15px rgba(40,42,52,.30);}
+/* 四隅のマグネット(銀色の小さな丸) */
+#colors .cc-magnet{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 35% 30%,#ffffff 0%,#d6d9de 40%,#8d9199 100%);box-shadow:0 1px 2px rgba(0,0,0,.5);}
+#colors .cc-magnet.tl{top:6px;left:6px;} #colors .cc-magnet.tr{top:6px;right:6px;}
+#colors .cc-magnet.bl{bottom:6px;left:6px;} #colors .cc-magnet.br{bottom:6px;right:6px;}
 .color-name{position:absolute;bottom:0;left:0;right:0;padding:5px 3px;background:rgba(0,0,0,.7);font-size:.55rem;text-align:center;color:var(--white);opacity:0;transition:opacity .2s;}
 .fav-heart{position:absolute;top:5px;left:5px;width:22px;height:22px;z-index:2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;}
 .fav-heart:active{transform:scale(.85);}
@@ -1308,21 +1359,6 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
           <option value="category">カテゴリ順</option>
           <option value="price_asc">価格が安い順</option>
           <option value="price_desc">価格が高い順</option>
-        </select>
-      </div>
-    </div>
-    <div class="cc-control">
-      <span class="cc-mini-label">表示列数</span>
-      <div class="tab-select-wrap tab-select-wrap-sm">
-        <select class="tab-select tab-select-sm" id="partsColsSelect" onchange="setPartsCols(this.value)">
-          <option value="3">3列</option>
-          <option value="4">4列</option>
-          <option value="5">5列</option>
-          <option value="6" selected>6列</option>
-          <option value="7">7列</option>
-          <option value="8">8列</option>
-          <option value="9">9列</option>
-          <option value="10">10列</option>
         </select>
       </div>
     </div>
@@ -2798,6 +2834,7 @@ function openPartsOverlay() {
   }
   const el = document.getElementById('partsOverlay');
   el.style.display = 'flex';
+  { const g = document.getElementById('parts-grid'); if (g && g.clientWidth && partsFieldCols(g) !== partsLastCols) setPartsCols(partsLastCols = partsFieldCols(g)); }
   requestAnimationFrame(() => el.classList.add('open'));
 }
 function closePartsOverlay() {
@@ -3532,6 +3569,116 @@ function ccHueSortKey(m) {
   if (f === 'white' || f === 'black' || beige) return { g: 0, b: 0, l: c.l };
   return { g: 1, b: CC_HUE_ORDER.indexOf(f), l: c.l };
 }
+// ── 冷蔵庫ボードの挿入カード ──
+// ALLタブ+並べ替え「色の流れ」+絞り込みなし のときだけ、約20色(4段)ごとに1枚、この順番で挿入する。
+// type: cat=カテゴリカード(タグの色のチップ入り) / photo=写真カード(画像だけ)
+// size: L=幅いっぱい(チップ5個) / M=幅の約7割(チップ3個) / S=幅の約半分(チップ2個)。align: 寄せ方
+// 背景はPlayと同じ画像(assets/images/play/<slug>.jpeg)と、Playと同じ暗さの重ね(PLAY_BG_DIM、指定なしは0.32)。
+// タップすると、そのタグでPlay(スキャッター)が開く。
+const CC_BOARD = {
+  every: 20,
+  slots: [
+    { type: 'cat',   tag: 'HOLIDAY',  size: 'L', align: 'center' },
+    { type: 'photo', tag: 'DARK',     size: 'M', align: 'right' },
+    { type: 'cat',   tag: 'FEMININE', size: 'M', align: 'left' },
+    { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'right' },
+    { type: 'cat',   tag: 'DARK',     size: 'S', align: 'left' },
+    { type: 'photo', tag: 'FEMININE', size: 'L', align: 'center' },
+    { type: 'cat',   tag: 'HOLIDAY',  size: 'M', align: 'right' },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'center' },
+    { type: 'cat',   tag: 'FEMININE', size: 'L', align: 'center' },
+  ],
+  // カードの幅と左位置(配列の内側の幅に対する%)。L はチップの列の外側の端から端まで
+  geom: {
+    L: { w: 95.5, left: { center: 2.25 } },
+    M: { w: 70,   left: { left: 2.25, center: 15, right: 27.75 } },
+    S: { w: 50,   left: { left: 2.25, center: 25, right: 47.75 } },
+  },
+  chips: { L: 5, M: 3, S: 2 },
+  photoRatio: { L: '16 / 10', M: '4 / 3', S: '1 / 1' },
+};
+function ccBoardActive(key) {
+  return key === 'ALL' && ccSortOrder === 'hue' && ccMakerFilter === 'ALL' && ccMoodFilter === 'ALL' && ccColorFilter === 'ALL';
+}
+// データの中での実際のタグ表記(例 'Holiday')。Playのボタンと同じ表記で開くため
+function ccBoardTagName(tag) {
+  const low = tag.toLowerCase();
+  for (const m of notionMaterials) { const t = scatterItemTags(m).find(x => x.toLowerCase() === low); if (t) return t; }
+  return tag;
+}
+function ccBoardBg(tag) {
+  const slug = tag.toLowerCase().replace(/\s+/g, '-');
+  const dim = (PLAY_BG_DIM[slug] != null) ? PLAY_BG_DIM[slug] : 0.32;
+  return 'linear-gradient(rgba(16,16,19,' + dim + '), rgba(16,16,19,' + dim + ')), url("assets/images/play/' + encodeURIComponent(slug) + '.jpeg")';
+}
+function ccBoardChip(c, chipPct) {
+  const el = document.createElement('div');
+  el.className = 'cc-card-chip';
+  el.style.width = chipPct.toFixed(3) + '%';
+  const tw = document.createElement('div');
+  tw.className = 'tip-wrap';
+  const gridImg = c.thumbSmall || c.thumb || '';
+  if (gridImg) {
+    const img = document.createElement('img');
+    img.alt = c.name || '';
+    prepGridImg(img, gridImg);
+    let zoomed = false;
+    const zoom = () => { if (zoomed || !img.naturalWidth) return; zoomed = true; applyMatZoom(el, gridImg, img, CC_FIELD.zoomClamp); };
+    img.addEventListener('load', zoom);
+    loadGridImg(img, gridImg, () => {
+      el.classList.remove('mat-img-zoom'); el.style.removeProperty('--mat-zoom');
+      const sw = document.createElement('div');
+      sw.className = 'color-card-swatch';
+      sw.style.background = c.css || '#cccccc';
+      img.replaceWith(sw);
+    });
+    if (img.complete) zoom();
+    tw.appendChild(img);
+  } else {
+    const sw = document.createElement('div');
+    sw.className = 'color-card-swatch';
+    sw.style.background = c.css || '#cccccc';
+    tw.appendChild(sw);
+  }
+  el.appendChild(tw);
+  el.onclick = (e) => { e.stopPropagation(); openColorDetail(c); }; // チップは詳細(カードのPlayとは別)
+  return el;
+}
+// n枚目の挿入カードを作る。used = タグごとに使ったチップの数(同じタグの2枚目は続きの色を見せる)
+function ccBoardCard(n, ordered, segs, used) {
+  const slot = CC_BOARD.slots[n % CC_BOARD.slots.length];
+  const g = CC_BOARD.geom[slot.size];
+  const card = document.createElement('div');
+  card.className = 'cc-board-card ' + slot.type;
+  card.dataset.tag = slot.tag; card.dataset.size = slot.size; card.dataset.align = slot.align;
+  const wPct = g.w, left = (g.left[slot.align] != null) ? g.left[slot.align] : g.left.center;
+  card.style.width = wPct + '%';
+  card.style.marginLeft = left + '%';
+  card.style.backgroundImage = ccBoardBg(slot.tag);
+  if (slot.type === 'photo') {
+    card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
+  } else {
+    const label = document.createElement('span');
+    label.className = 'cc-board-label';
+    label.textContent = slot.tag;
+    card.appendChild(label);
+    const low = slot.tag.toLowerCase();
+    const members = ordered.filter(m => scatterItemTags(m).some(t => t.toLowerCase() === low));
+    const k = CC_BOARD.chips[slot.size], start = used[low] || 0;
+    let pick = members.slice(start, start + k);
+    if (pick.length < k) pick = pick.concat(members.slice(0, k - pick.length));
+    used[low] = start + k;
+    const row = document.createElement('div');
+    row.className = 'cc-board-chips';
+    // チップの大きさはフィールドのチップと同じ(カード内の幅に換算)
+    const chipPct = (CC_FIELD.w / segs) / wPct * 100 * 1.08;
+    pick.forEach(c => row.appendChild(ccBoardChip(c, chipPct)));
+    card.appendChild(row);
+  }
+  ['tl', 'tr', 'bl', 'br'].forEach(cn => { const d = document.createElement('span'); d.className = 'cc-magnet ' + cn; card.appendChild(d); });
+  card.onclick = () => openScatter(ccBoardTagName(slot.tag));
+  return card;
+}
 let ccFieldLastSegs = 0;
 function ccFieldSegments(grid) {
   const w = (grid && grid.clientWidth) || (Math.min(window.innerWidth, 1200) - 36);
@@ -3586,7 +3733,9 @@ function renderColorGrids() {
     if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
     grid.classList.add('cc-field');
     const segs = ccFieldSegments(grid);
-    let pos = 0;
+    const board = ccBoardActive(key); // 挿入カードは ALL+色の流れ+絞り込みなし のときだけ
+    let pos = 0, nextBoardAt = CC_BOARD.every, boardN = 0;
+    const boardUsed = {};
     while (pos < filtered.length) {
       const per = CC_FIELD.cols * segs;
       const items = filtered.slice(pos, pos + per);
@@ -3641,6 +3790,10 @@ function renderColorGrids() {
       });
       grid.appendChild(row);
       pos += items.length;
+      if (board && pos >= nextBoardAt && pos < filtered.length) {
+        grid.appendChild(ccBoardCard(boardN++, filtered, segs, boardUsed));
+        nextBoardAt += CC_BOARD.every;
+      }
     }
   });
   ccFieldLastSegs = ccFieldSegments(document.getElementById('color-ALL-grid'));
@@ -5164,7 +5317,7 @@ function applyChartStoneScale(el, img, src, sizeMm, targetOverride) {
   const target = (targetOverride != null) ? targetOverride : chartStoneTarget(sizeMm);
   const applyRec = rec => {
     if (!rec) return; // 測定不可 → フォールバック
-    if (img.parentElement !== el) return; // 画像が差し替え/破棄されていたら触らない
+    if (!el.contains(img)) return; // 画像が差し替え/破棄されていたら触らない(画像は影用ラッパーの中)
     const fw = rec.r - rec.l, fh = rec.b - rec.t;
     if (!(fw > 0) || !(fh > 0) || !(rec.nw > 0) || !(rec.nh > 0)) return;
     // カードは aspect-ratio 0.72(幅/高さ)。contain で描かれる画像の大きさを
@@ -5204,10 +5357,25 @@ function isStudsOrChaton(p) {
   return s === 'スタッズ' || s === '中抜きスタッズ' || s.includes('チャトン') || n.includes('チャトン');
 }
 
+// PARTSチャートの列数:1区画5列。画面が広いときは区画(約360px)を横に足す(COLORSと同じ考え方)
+let partsLastCols = 0;
+function partsFieldCols(grid) {
+  const w = (grid && grid.clientWidth) || (Math.min(window.innerWidth, 1200) - 36);
+  return 5 * Math.max(1, Math.round(w / 360));
+}
+let partsFieldResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(partsFieldResizeTimer);
+  partsFieldResizeTimer = setTimeout(() => {
+    const g = document.getElementById('parts-grid');
+    if (g && g.clientWidth && partsFieldCols(g) !== partsLastCols) setPartsCols(partsLastCols = partsFieldCols(g));
+  }, 200);
+});
 function renderPartsGrid() {
   const grid = document.getElementById('parts-grid');
   if (!grid) return;
   grid.innerHTML = '';
+  setPartsCols(partsLastCols = partsFieldCols(grid));
   const filtered = notionParts.filter(p => {
     if (scatterIsExcludedCategory(p.category)) return false;
     if (partsCatFilter !== 'ALL') {
@@ -5296,7 +5464,10 @@ function renderPartsGrid() {
         sw.style.background = p.css || '#cccccc';
         img.replaceWith(sw);
       }, cardIdx < 12 ? { eager: true } : null);
-      el.appendChild(img);
+      const shadow = document.createElement('div');
+      shadow.className = 'part-shadow'; // 接地影はこのラッパーに付ける(石の拡大縮小で影が変わらない)
+      shadow.appendChild(img);
+      el.appendChild(shadow);
       // チャートでは画布ではなく石そのものが目標サイズになるよう bbox で正規化する
       // (FBシリーズカードは従来どおり10mm相当が目標。測れなければ --pscale のまま)
       if (fbSeriesCard) applyChartStoneScale(el, img, gridImg, 10, fbMaximaCard ? 0.75 : null);
@@ -5305,7 +5476,10 @@ function renderPartsGrid() {
       const sw = document.createElement('div');
       sw.className = 'color-card-swatch';
       sw.style.background = p.css || '#cccccc';
-      el.appendChild(sw);
+      const shadow = document.createElement('div');
+      shadow.className = 'part-shadow';
+      shadow.appendChild(sw);
+      el.appendChild(shadow);
     }
     el.appendChild(buildFavHeart(p));
     // グリッド上のSOLD OUTバッジは、パーツ本体の見た目を隠してしまうため表示しない。
