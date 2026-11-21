@@ -192,7 +192,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #parts .parts-grid{column-gap:14px;row-gap:30px;padding:18px 16px 26px;}
 #parts .parts-grid .color-card{overflow:visible;content-visibility:visible;contain-intrinsic-size:none;contain:none;background:transparent;border:0;}
 #parts .parts-grid .part-shadow{position:absolute;inset:-14px;padding:14px;overflow:hidden;pointer-events:none;
-  filter:drop-shadow(0 2px 3px rgba(40,42,52,.55)) drop-shadow(0 10px 15px rgba(40,42,52,.30));} /* COLORSのチップと同じ値 */
+  filter:drop-shadow(0 2px 3px rgba(40,42,52,.63)) drop-shadow(0 10px 15px rgba(40,42,52,.37));} /* COLORSのチップと同じ値 */
 #parts .parts-grid .part-shadow > img{filter:none;}
 #parts .parts-grid .color-card.sized .part-shadow > img,#parts .parts-grid .color-card.sized .part-shadow > .color-card-swatch{transform:scale(var(--pscale,1));transform-origin:center;}
 
@@ -315,17 +315,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 /* 画像のラッパー(傾きは付けない。画像自身の transform = 拡大とは別) */
 #colors .cc-field .tip-wrap{position:absolute;inset:0;transform-origin:50% 60%;}
 #colors .cc-field .tip-wrap > img{width:100%;height:100%;object-fit:contain;display:block;
-  filter:drop-shadow(0 2px 3px rgba(40,42,52,.55)) drop-shadow(0 10px 15px rgba(40,42,52,.30));}
+  filter:drop-shadow(0 2px 3px rgba(40,42,52,.63)) drop-shadow(0 10px 15px rgba(40,42,52,.37));}
 #colors .cc-field .color-card.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
 /* 画像が無い/読めないときの色の板:チップに近い角丸で、同じ接地影 */
 #colors .cc-field .color-card-swatch{position:absolute;inset:8% 14%;width:auto;height:auto;border-radius:46% 46% 40% 40% / 30% 30% 24% 24%;
-  box-shadow:0 2px 3px rgba(40,42,52,.55),0 10px 15px rgba(40,42,52,.30);}
+  box-shadow:0 2px 3px rgba(40,42,52,.63),0 10px 15px rgba(40,42,52,.37);}
 #colors .cc-field .fav-heart{top:0;left:-4px;}
 /* ── COLORS:冷蔵庫ボード ──
    面:サロンの冷蔵庫(ブラッシュドシルバー)の写真。面は画面に固定された1枚の層(.sv-bg)なので、
    写真1枚を cover で画面全体に敷く(繰り返さないので継ぎ目が出ない)。読み込み前・失敗時は近い銀色の地。
    チップは面の上をスクロールする。PARTS(#partsOverlay)も同じ面・同じ文字色にする(同じ規則を共有するので値は常に同一) */
-#colorOverlay .sv-bg,#partsOverlay .sv-bg{background:#c5c7cb url('https://lh3.googleusercontent.com/d/1fsjBdxYuzzTR1NpxXX3yAi-5ckmVvS1o=w1200-rp') center/cover no-repeat;}
+#colorOverlay .sv-bg,#partsOverlay .sv-bg{background:#c5c7cb url('https://lh3.googleusercontent.com/d/1fsjBdxYuzzTR1NpxXX3yAi-5ckmVvS1o=w1200-rp') center/cover no-repeat;filter:brightness(.93);}
 #colorOverlay .sv-topbar,#partsOverlay .sv-topbar{background:linear-gradient(to bottom,rgba(255,255,255,.35),transparent);}
 #colorOverlay .sv-back,#colorOverlay .sv-title,#partsOverlay .sv-back,#partsOverlay .sv-title{color:#222;}
 #colorOverlay .cc-mini-label,#partsOverlay .cc-mini-label{color:#444;}
@@ -340,7 +340,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #colorOverlay .tab-select-wrap::after,#partsOverlay .tab-select-wrap::after{color:#444;}
 /* 挿入カード(カテゴリカード/写真カード)。マグネットで留めた紙のように、面に強めの影 */
 #colors .cc-board-card{position:relative;margin:0 0 30px;border-radius:3px;background-color:#3a3a3e;background-position:center;background-size:cover;background-repeat:no-repeat;
-  box-shadow:0 2px 3px rgba(40,42,52,.55),0 10px 15px rgba(40,42,52,.30);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  box-shadow:0 2px 3px rgba(40,42,52,.63),0 10px 15px rgba(40,42,52,.37);cursor:pointer;-webkit-tap-highlight-color:transparent;}
 #colors .cc-board-card.cat{padding:40px 14px 18px;}
 #colors .cc-board-label{position:absolute;top:13px;left:16px;font-family:'Special Elite','Kosugi',sans-serif;font-size:.72rem;letter-spacing:.3em;color:#fff;
   text-shadow:0 1px 3px rgba(0,0,0,.45);}
@@ -348,10 +348,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #colors .cc-card-chip{position:relative;aspect-ratio:.72;flex:0 0 auto;cursor:pointer;}
 #colors .cc-card-chip .tip-wrap{position:absolute;inset:0;}
 #colors .cc-card-chip .tip-wrap > img{width:100%;height:100%;object-fit:contain;display:block;
-  filter:drop-shadow(0 2px 3px rgba(40,42,52,.55)) drop-shadow(0 10px 15px rgba(40,42,52,.30));}
+  filter:drop-shadow(0 2px 3px rgba(40,42,52,.63)) drop-shadow(0 10px 15px rgba(40,42,52,.37));}
 #colors .cc-card-chip.mat-img-zoom .tip-wrap > img{transform:scale(var(--mat-zoom,1));transform-origin:center;}
 #colors .cc-card-chip .color-card-swatch{position:absolute;inset:8% 14%;width:auto;height:auto;border-radius:46% 46% 40% 40% / 30% 30% 24% 24%;
-  box-shadow:0 2px 3px rgba(40,42,52,.55),0 10px 15px rgba(40,42,52,.30);}
+  box-shadow:0 2px 3px rgba(40,42,52,.63),0 10px 15px rgba(40,42,52,.37);}
 /* 四隅のマグネット(銀色の小さな丸) */
 #colors .cc-magnet{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle at 35% 30%,#ffffff 0%,#d6d9de 40%,#8d9199 100%);box-shadow:0 1px 2px rgba(0,0,0,.5);}
