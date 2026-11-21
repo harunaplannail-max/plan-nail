@@ -166,8 +166,32 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
    .tall を付ける)。チップ画像は縦長なので横には広げず、縦にだけ伸ばす。
    dense で、縦長カードの脇にできた隙間を後続の通常カードで埋める。
    対象はカラーチャートの7グリッドだけ(PARTS/NEW IN等には付けない) */
-#color-ALL-grid,#color-Gel-grid,#color-Chrome-grid,#color-GlitterGel-grid,#color-GlitterPowder-grid,#color-Magnet-grid,#color-Gradation-grid{grid-auto-flow:dense;}
+#colors .color-grid{grid-auto-flow:dense;}
 .color-card.tall{grid-row:span 2;aspect-ratio:auto;contain-intrinsic-size:140px 394px;}
+
+/* ── COLOR ARCHIVE の見た目(2026-11-21): 展示面にチップが置かれている感じ ──
+   対象はカラーチャート(#colors / #colorOverlay 配下)だけ。PARTS・NEW IN・
+   お気に入り等、.color-card / .color-grid の共用先には効かせないよう、
+   セレクタは全て #colors / #colorOverlay で絞る。機能は一切変えていない。 */
+/* 展示面: 深いチャコール #242424 + ごく薄いマットな粒子(装飾グラデーションは無し) */
+#colorOverlay .sv-bg{background-color:#242424;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px;}
+/* グリッドの「間」: 列数が少ないほど広く取る(setColorCols が --cc-gap を出す。未設定時は12px) */
+#colors .color-grid{gap:var(--cc-gap,12px);}
+/* 枠なし: セルでの切り抜きをやめ、チップが面の上に直接置かれている見え方にする。
+   影はチップの形をなぞる drop-shadow 1枚だけ・弱く(以前の2枚重ね+傾け案は不採用)。
+   --stg は列ごとの小さな縦ずれ(renderColorGrids が列インデックスから決める)。
+   transform はレイアウトに影響しないため、縦長タイルとも重ならない */
+#colors .color-card{overflow:visible;transform:translateY(var(--stg,0px));}
+#colors .color-card:active{transform:translateY(var(--stg,0px)) scale(.96);}
+#colors .color-card img{filter:drop-shadow(0 3px 6px rgba(0,0,0,.22));}
+#colors .color-card-swatch{box-shadow:0 3px 6px rgba(0,0,0,.22);}
+/* セクション見出し: ブランド名(Special Elite・字間広め)+罫+件数だけの編集風 */
+.cc-section{margin-top:40px;}
+.cc-section:first-child{margin-top:2px;}
+.cc-section-head{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.cc-section-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.02rem;letter-spacing:.24em;color:var(--white);white-space:nowrap;}
+.cc-section-rule{flex:1;height:1px;background:rgba(255,255,255,.16);}
+.cc-section-count{font-family:'Special Elite','Kosugi',sans-serif;font-size:.58rem;letter-spacing:.16em;color:var(--gray-mid);white-space:nowrap;}
 
 /* ── POPULAR(直近30日の閲覧数で自動選出する人気カラー) ── */
 .featured-shelf{margin-bottom:26px;}
@@ -1245,13 +1269,13 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
   </div>
 
   <div class="tab-content-wrap">
-  <div id="tab-ALL" class="tab-content active reveal"><div class="color-grid" id="color-ALL-grid"></div></div>
-  <div id="tab-Gel" class="tab-content reveal"><div class="color-grid" id="color-Gel-grid"></div></div>
-  <div id="tab-Chrome" class="tab-content reveal"><div class="color-grid" id="color-Chrome-grid"></div></div>
-  <div id="tab-GlitterGel" class="tab-content reveal"><div class="color-grid" id="color-GlitterGel-grid"></div></div>
-  <div id="tab-GlitterPowder" class="tab-content reveal"><div class="color-grid" id="color-GlitterPowder-grid"></div></div>
-  <div id="tab-Magnet" class="tab-content reveal"><div class="color-grid" id="color-Magnet-grid"></div></div>
-  <div id="tab-Gradation" class="tab-content reveal"><div class="color-grid" id="color-Gradation-grid"></div></div>
+  <div id="tab-ALL" class="tab-content active reveal"><div class="color-sections" id="color-ALL-grid"></div></div>
+  <div id="tab-Gel" class="tab-content reveal"><div class="color-sections" id="color-Gel-grid"></div></div>
+  <div id="tab-Chrome" class="tab-content reveal"><div class="color-sections" id="color-Chrome-grid"></div></div>
+  <div id="tab-GlitterGel" class="tab-content reveal"><div class="color-sections" id="color-GlitterGel-grid"></div></div>
+  <div id="tab-GlitterPowder" class="tab-content reveal"><div class="color-sections" id="color-GlitterPowder-grid"></div></div>
+  <div id="tab-Magnet" class="tab-content reveal"><div class="color-sections" id="color-Magnet-grid"></div></div>
+  <div id="tab-Gradation" class="tab-content reveal"><div class="color-sections" id="color-Gradation-grid"></div></div>
   </div>
   </section>
   </div>
@@ -2515,6 +2539,11 @@ function buildColorFamilyBar() {
 
 function setColorCols(n) {
   document.getElementById('colors').style.setProperty('--cc-cols', n);
+  // 列数が少ないほど余白を広く取る(展示面に置かれたチップの「間」)。
+  // グリッド側は #colors .color-grid の gap:var(--cc-gap) で受ける
+  const nn = parseInt(n, 10) || 6;
+  const gap = nn <= 4 ? 15 : (nn <= 6 ? 12 : 10);
+  document.getElementById('colors').style.setProperty('--cc-gap', gap + 'px');
 }
 
 function applyIpadDefaultCols() {
@@ -3495,9 +3524,9 @@ function renderColorGrids() {
   const CAT_TABS = { ALL: 'ALL', Gel: 'Gel', Chrome: 'Chrome', GlitterGel: 'Glitter Gel', GlitterPowder: 'Glitter Powder', Magnet: 'Magnet', Gradation: 'Gradation' };
   Object.keys(CAT_TABS).forEach(key => {
     const cat = CAT_TABS[key];
-    const grid = document.getElementById('color-'+key+'-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
+    const wrap = document.getElementById('color-'+key+'-grid');
+    if (!wrap) return;
+    wrap.innerHTML = '';
     const filtered = notionMaterials.filter(m => {
       if (cat !== 'ALL' && !String(m.category || '').split(',').map(s => s.trim()).includes(cat)) return false;
       if (ccMakerFilter !== 'ALL' && (m.maker||'') !== ccMakerFilter) return false;
@@ -3521,15 +3550,15 @@ function renderColorGrids() {
       const tb = b.releaseDate ? new Date(b.releaseDate).getTime() : (b.created ? new Date(b.created).getTime() : 0);
       return ccSortOrder === 'old' ? ta - tb : tb - ta;
     });
-    if (!filtered.length) { grid.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;grid-column:1/-1;">該当する商材がありません</p>'; return; }
+    if (!filtered.length) { wrap.innerHTML='<p style="color:var(--gray-mid);font-size:.75rem;">該当する商材がありません</p>'; return; }
     // 推し色の大きな表示(縦長1列×2行): loade/CLETOの色から選ぶ。間隔は8〜16枚の
     // 範囲で不規則に空ける(間隔列 TALL_GAPS は固定で、並び順だけから決まるため、
     // 同じリストでは再描画しても配置は安定する)。目標位置に最も近い候補を採る。
     // 末尾近くは縦長の下半分が最後の行に1枚だけはみ出す形になるため対象外にする。
     const TALL_GAPS = [10, 14, 8, 15, 11, 16, 9, 13, 12, 8];
     const tallIdx = new Set();
+    const colsNow = parseInt(getComputedStyle(document.getElementById('colors')).getPropertyValue('--cc-cols'), 10) || 6;
     {
-      const colsNow = parseInt(getComputedStyle(document.getElementById('colors')).getPropertyValue('--cc-cols'), 10) || 6;
       const tailGuard = Math.max(colsNow, 6); // 後ろにこの枚数が続かないものは縦長にしない
       const cand = [];
       filtered.forEach((c, i) => { if ((c.maker === 'loade' || c.maker === 'CLETO') && i < filtered.length - tailGuard) cand.push(i); });
@@ -3550,11 +3579,57 @@ function renderColorGrids() {
         prev = chosen; k++;
       }
     }
-    filtered.forEach((c, cardIdx) => {
+    // ── COLOR ARCHIVE のセクション分け(見た目のみ・並びと選定は従来どおり) ──
+    // メーカーALLのときは loade / CLETO / COLOR ARCHIVE の3セクションに分けて
+    // 見出し(名前+罫+件数)を付ける。絞り込み・並べ替えはセクションの中にも効き、
+    // 0件のセクションは見出しごと出さない。メーカー指定時はそのメーカーだけの
+    // セクション(loade/CLETO以外は見出しなしの1グリッド)。
+    // 縦長(推し色)の選定は従来どおり「絞り込み後のリスト全体」に対して済ませてあり、
+    // 選ばれたカードがそのまま各セクションの中に配置される(選定結果は従来と同一)。
+    const indexed = filtered.map((c, i) => ({ c, i }));
+    let sectionDefs;
+    if (ccMakerFilter === 'ALL') {
+      sectionDefs = [
+        { title: 'loade', items: indexed.filter(x => x.c.maker === 'loade') },
+        { title: 'CLETO', items: indexed.filter(x => x.c.maker === 'CLETO') },
+        { title: 'COLOR ARCHIVE', items: indexed.filter(x => x.c.maker !== 'loade' && x.c.maker !== 'CLETO') },
+      ];
+    } else if (ccMakerFilter === 'loade' || ccMakerFilter === 'CLETO') {
+      sectionDefs = [{ title: ccMakerFilter, items: indexed }];
+    } else {
+      sectionDefs = [{ title: null, items: indexed }];
+    }
+    // 列ごとの小さな縦ずれ(--stg)。列インデックスで決まる固定パターンで最大8px。
+    // transform なのでレイアウトには影響せず、余白(12px以上)の範囲に収まる。
+    const STG = [0, 6, 3, 8, 4, 7, 2, 5, 1, 6];
+    let renderPos = 0; // このタブで描画した順序(先頭12枚の eager 判定用)
+    sectionDefs.filter(sec => sec.items.length).forEach(sec => {
+      const secEl = document.createElement('div');
+      secEl.className = 'cc-section';
+      if (sec.title) {
+        const head = document.createElement('div');
+        head.className = 'cc-section-head';
+        const nm = document.createElement('span');
+        nm.className = 'cc-section-name';
+        nm.textContent = sec.title;
+        const rule = document.createElement('span');
+        rule.className = 'cc-section-rule';
+        const cnt = document.createElement('span');
+        cnt.className = 'cc-section-count';
+        cnt.textContent = sec.items.length + ' COLORS';
+        head.appendChild(nm);
+        head.appendChild(rule);
+        head.appendChild(cnt);
+        secEl.appendChild(head);
+      }
+      const grid = document.createElement('div');
+      grid.className = 'color-grid';
+      sec.items.forEach(({ c, i }, posInSec) => {
       const el = document.createElement('div');
       el.className = 'color-card';
-      const isTall = tallIdx.has(cardIdx);
+      const isTall = tallIdx.has(i);
       if (isTall) el.classList.add('tall');
+      el.style.setProperty('--stg', STG[(posInSec % colsNow) % STG.length] + 'px');
       // サムネイルが未設定でも、商材画像(詳細用)があればグリッドにも表示する。
       // グリッドは小さく並ぶだけなので、通信量・デコード負荷を抑えるためthumbSmallを優先する。
       const gridImg = c.thumbSmall || c.thumb || '';
@@ -3572,7 +3647,7 @@ function renderColorGrids() {
           sw.className = 'color-card-swatch';
           sw.style.background = c.css || '#cccccc';
           img.replaceWith(sw);
-        }, ((key === 'ALL' && cardIdx < 12) || isTall) ? { eager: true } : null);
+        }, ((key === 'ALL' && renderPos < 12) || isTall) ? { eager: true } : null);
         if (img.complete) zoom(); // キャッシュ済みで、すでに読み込み終わっている場合
         el.appendChild(img);
       } else {
@@ -3588,6 +3663,10 @@ function renderColorGrids() {
       el.appendChild(label);
       el.onclick = () => openColorDetail(c);
       grid.appendChild(el);
+      renderPos++;
+      });
+      secEl.appendChild(grid);
+      wrap.appendChild(secEl);
     });
   });
 }
