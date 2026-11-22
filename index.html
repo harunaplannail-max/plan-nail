@@ -357,11 +357,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
   background:radial-gradient(circle at 35% 30%,#ffffff 0%,#d6d9de 40%,#8d9199 100%);box-shadow:0 1px 2px rgba(0,0,0,.5);}
 #colors .cc-magnet.tl{top:6px;left:6px;} #colors .cc-magnet.tr{top:6px;right:6px;}
 #colors .cc-magnet.bl{bottom:6px;left:6px;} #colors .cc-magnet.br{bottom:6px;right:6px;}
-/* 所々に本物のクロームノブ(実物写真)。カードの角に被せて留める */
-#colors .cc-knob{position:absolute;width:40px;height:39px;z-index:3;pointer-events:none;
-  filter:drop-shadow(0 3px 4px rgba(20,20,26,.45));}
-#colors .cc-knob.tl{top:-11px;left:-11px;} #colors .cc-knob.tr{top:-11px;right:-11px;}
-#colors .cc-knob.bl{bottom:-11px;left:-11px;} #colors .cc-knob.br{bottom:-11px;right:-11px;}
 .color-name{position:absolute;bottom:0;left:0;right:0;padding:5px 3px;background:rgba(0,0,0,.7);font-size:.55rem;text-align:center;color:var(--white);opacity:0;transition:opacity .2s;}
 .fav-heart{position:absolute;top:5px;left:5px;width:22px;height:22px;z-index:2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;}
 .fav-heart:active{transform:scale(.85);}
@@ -707,7 +702,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .browse-overlay.open{opacity:1;pointer-events:all;}
 .browse-overlay-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #partsOverlay .browse-overlay-body{overflow-x:hidden;}
-#colorOverlay .browse-overlay-body{overflow-x:hidden;}
 .browse-overlay-body .pub-section{padding-top:20px;}
 
 /* ── COLORS/PARTSエントリー: Liquid Glassラミネート ──
@@ -3612,7 +3606,6 @@ function ccHueSortKey(m) {
 // size: L=幅いっぱい(チップ5個) / M=幅の約7割(チップ3個) / S=幅の約半分(チップ2個)。align: 寄せ方
 // 背景はPlayと同じ画像(assets/images/play/<slug>.jpeg)と、Playと同じ暗さの重ね(PLAY_BG_DIM、指定なしは0.32)。
 // タップすると、そのタグでPlay(スキャッター)が開く。
-const CC_KNOB_URL = 'https://lh3.googleusercontent.com/d/1dak18USuZ3ucawmM-BEH4-x-gFkhmqwb=w200-rp';
 const CC_BOARD = {
   every: 20,
   slots: [
@@ -3713,11 +3706,7 @@ function ccBoardCard(n, ordered, segs, used) {
     pick.forEach(c => row.appendChild(ccBoardChip(c, chipPct)));
     card.appendChild(row);
   }
-  const knobCorner = ['tl', 'br', 'tr', 'bl'][n % 4];
-  ['tl', 'tr', 'bl', 'br'].forEach(cn => {
-    if (cn === knobCorner) { const k = document.createElement('img'); k.className = 'cc-knob ' + cn; k.src = CC_KNOB_URL; k.alt = ''; card.appendChild(k); }
-    else { const d = document.createElement('span'); d.className = 'cc-magnet ' + cn; card.appendChild(d); }
-  });
+  ['tl', 'tr', 'bl', 'br'].forEach(cn => { const d = document.createElement('span'); d.className = 'cc-magnet ' + cn; card.appendChild(d); });
   card.onclick = () => openScatter(ccBoardTagName(slot.tag));
   return card;
 }
