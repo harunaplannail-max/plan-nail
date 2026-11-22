@@ -342,6 +342,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #colors .cc-board-card{position:relative;margin:0 0 30px;border-radius:3px;background-color:#3a3a3e;background-position:center;background-size:cover;background-repeat:no-repeat;
   box-shadow:0 2px 3px rgba(40,42,52,.63),0 10px 15px rgba(40,42,52,.37);cursor:pointer;-webkit-tap-highlight-color:transparent;}
 #colors .cc-board-card.cat{padding:40px 14px 18px;}
+/* コラージュカード:四角い写真と切り抜きモチーフをボード上に混植 */
+#colors .cc-col-el{position:absolute;background-size:cover;background-position:center;border-radius:3px;
+  box-shadow:0 2px 3px rgba(30,30,38,.35),0 10px 18px rgba(30,30,38,.28);}
+#colors .cc-col-el.die{background-size:contain;background-repeat:no-repeat;border-radius:0;box-shadow:none;
+  filter:drop-shadow(0 3px 5px rgba(30,30,38,.45));}
 #colors .cc-board-label{position:absolute;top:13px;left:16px;font-family:'Special Elite','Kosugi',sans-serif;font-size:.72rem;letter-spacing:.3em;color:#fff;
   text-shadow:0 1px 3px rgba(0,0,0,.45);}
 #colors .cc-board-chips{display:flex;justify-content:space-evenly;align-items:flex-start;}
@@ -3613,10 +3618,16 @@ const CC_BOARD = {
     { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1Ow-IiD2NXxf6HDick4b_TnZZC6UkJthl=w900-rp' },
     { type: 'cat',   tag: 'FEMININE', size: 'M', align: 'left' },
-    { type: 'photo', tag: 'FEMININE', size: 'S', align: 'left',   img: 'https://lh3.googleusercontent.com/d/1yMIZs3BeE1x72Gsmci-G8M_GlXt0Bowr=w900-rp' },
+    { type: 'collage', tag: 'FEMININE', size: 'M', align: 'left', els: [
+        { img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp', x: 3, y: 7, w: 54, ar: '4 / 3' },
+        { img: 'https://lh3.googleusercontent.com/d/1NodIC5JqlKBdHMGakOcj9dzzN3RQef66=w700-rp', x: 47, y: 36, w: 50, ar: '700 / 478', die: 1 },
+        { img: 'https://lh3.googleusercontent.com/d/1yMIZs3BeE1x72Gsmci-G8M_GlXt0Bowr=w900-rp', x: 6, y: 58, w: 27, ar: '3 / 4' } ] },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1n1ww997T0ogPml3MVwjf0CZMcEpntplI=w900-rp' },
     { type: 'cat',   tag: 'DARK',     size: 'S', align: 'left' },
-    { type: 'photo', tag: 'DARK',     size: 'M', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1zrCUtDs4GVXTZ5ArEE1ENulCUaIJdYJr=w900-rp' },
+    { type: 'collage', tag: 'DARK', size: 'M', align: 'right', els: [
+        { img: 'https://lh3.googleusercontent.com/d/1zrCUtDs4GVXTZ5ArEE1ENulCUaIJdYJr=w900-rp', x: 3, y: 8, w: 46, ar: '3 / 4' },
+        { img: 'https://lh3.googleusercontent.com/d/1VJlAQFxpE3aFm_tZ9u7kSTOlFHm6KcUF=w700-rp', x: 44, y: 6, w: 53, ar: '700 / 478', die: 1 },
+        { img: 'https://lh3.googleusercontent.com/d/1kGXTA0ML2DAuNw5hLcGOqlJfK0DUfXsc=w900-rp', x: 58, y: 60, w: 30, ar: '3 / 4' } ] },
     { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1kGXTA0ML2DAuNw5hLcGOqlJfK0DUfXsc=w900-rp' },
     { type: 'cat',   tag: 'HOLIDAY',  size: 'M', align: 'right' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1G4TeV24IpJzq1_STrYBYIjcbSSUfNOKv=w900-rp' },
@@ -3696,6 +3707,19 @@ function ccBoardCard(n, ordered, segs, used) {
   card.style.backgroundImage = slot.img ? 'url("' + slot.img + '")' : ccBoardBg(slot.tag);
   if (slot.type === 'photo') {
     card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
+  } else if (slot.type === 'collage') {
+    card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
+    card.style.backgroundImage = 'none';
+    card.style.backgroundColor = 'transparent';
+    card.style.boxShadow = 'none';
+    (slot.els || []).forEach(e => {
+      const el = document.createElement('div');
+      el.className = 'cc-col-el' + (e.die ? ' die' : '');
+      el.style.left = e.x + '%'; el.style.top = e.y + '%'; el.style.width = e.w + '%';
+      el.style.aspectRatio = e.ar || '1 / 1';
+      el.style.backgroundImage = 'url("' + e.img + '")';
+      card.appendChild(el);
+    });
   } else {
     const label = document.createElement('span');
     label.className = 'cc-board-label';
