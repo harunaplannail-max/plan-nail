@@ -3610,6 +3610,7 @@ const CC_BOARD = {
   every: 20,
   slots: [
     { type: 'cat',   tag: 'HOLIDAY',  size: 'L', align: 'center' },
+    { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'M', align: 'right' },
     { type: 'cat',   tag: 'FEMININE', size: 'M', align: 'left' },
     { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'right' },
@@ -3685,7 +3686,7 @@ function ccBoardCard(n, ordered, segs, used) {
   const wPct = g.w, left = (g.left[slot.align] != null) ? g.left[slot.align] : g.left.center;
   card.style.width = wPct + '%';
   card.style.marginLeft = left + '%';
-  card.style.backgroundImage = ccBoardBg(slot.tag);
+  card.style.backgroundImage = slot.img ? 'url("' + slot.img + '")' : ccBoardBg(slot.tag);
   if (slot.type === 'photo') {
     card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
   } else {
