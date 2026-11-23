@@ -3599,13 +3599,15 @@ const CC_FIELD = {
 // 2. 有彩色は 赤 → 茶(暗いブラウン) → オレンジ → 黄 → 緑 → 青 → 紫 → ピンク の順で、同じ色の中は明るい順
 // 3. グリッター/マグネットも、CSS値の色でそのまま同じ位置に入る
 // 4. CSS値が無い(#cccccc 扱い)ものは最後に名前順
-const CC_HUE_ORDER = ['red', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'];
+const CC_HUE_ORDER = ['pink', 'red', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple']; // ピンクを先頭に (2026-11-23 Haruna)
 function ccHueSortKey(m) {
   const c = hexToHsl(m.css), f = familyOfItem(m);
-  if (!c || !f) return { g: 2, b: 0, l: 0 };
+  if (!c || !f) return { g: 3, b: 0, l: 0 };
   const beige = f === 'brown' && c.l > COLOR_RULES.brownMaxL;
-  if (f === 'white' || f === 'black' || beige) return { g: 0, b: 0, l: c.l };
-  return { g: 1, b: CC_HUE_ORDER.indexOf(f), l: c.l };
+  // デフォルトの「色の流れ」はピンクから始める (2026-11-23 Haruna)
+  if (f === 'pink') return { g: 0, b: 0, l: c.l };
+  if (f === 'white' || f === 'black' || beige) return { g: 1, b: 0, l: c.l };
+  return { g: 2, b: CC_HUE_ORDER.indexOf(f), l: c.l };
 }
 // ── 冷蔵庫ボードの挿入カード ──
 // ALLタブ+並べ替え「色の流れ」+絞り込みなし のときだけ、約20色(4段)ごとに1枚、この順番で挿入する。
