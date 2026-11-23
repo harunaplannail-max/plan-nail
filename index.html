@@ -3616,11 +3616,14 @@ function ccHueSortKey(m) {
 // 背景はPlayと同じ画像(assets/images/play/<slug>.jpeg)と、Playと同じ暗さの重ね(PLAY_BG_DIM、指定なしは0.32)。
 // タップすると、そのタグでPlay(スキャッター)が開く。
 const CC_BOARD = {
-  every: 20,
+  every: 14, // 14色ごとに1枚 (2026-11-23 枠を増やした)
   slots: [
-    { type: 'cat',   tag: 'HOLIDAY',  size: 'L', align: 'center' },
     { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/1iHaVjNGKxokrMYyOG7dJ9HSFtMM1FcoP=w900-rp' },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1Ow-IiD2NXxf6HDick4b_TnZZC6UkJthl=w900-rp' },
+    { type: 'cat',   tag: 'HOLIDAY',  size: 'L', align: 'center' },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'left',   img: 'https://lh3.googleusercontent.com/d/1Yg8obyFEQ6uSAnZpJwoLOWM1-13kjx2w=w900-rp' },
     { type: 'cat',   tag: 'FEMININE', size: 'M', align: 'left' },
     { type: 'collage', tag: 'FEMININE', size: 'M', align: 'left', els: [
         { img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp', x: 3, y: 7, w: 54, ar: '4 / 3' },
@@ -3632,12 +3635,11 @@ const CC_BOARD = {
         { img: 'https://lh3.googleusercontent.com/d/1zrCUtDs4GVXTZ5ArEE1ENulCUaIJdYJr=w900-rp', x: 3, y: 8, w: 46, ar: '3 / 4' },
         { img: 'https://lh3.googleusercontent.com/d/1VJlAQFxpE3aFm_tZ9u7kSTOlFHm6KcUF=w700-rp', x: 44, y: 6, w: 53, ar: '700 / 478', die: 1 },
         { img: 'https://lh3.googleusercontent.com/d/1kGXTA0ML2DAuNw5hLcGOqlJfK0DUfXsc=w900-rp', x: 58, y: 60, w: 30, ar: '3 / 4' } ] },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1mG2Md8qfMr_GEsPCYtapSagGGZyW9s17=w900-rp' },
     { type: 'photo', tag: 'FEMININE', size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/13vQJwqzrg0qfv5KMvH51Yl8l9M1RbikF=w900-rp' },
-    { type: 'cat',   tag: 'HOLIDAY',  size: 'M', align: 'right' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1G4TeV24IpJzq1_STrYBYIjcbSSUfNOKv=w900-rp' },
     { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/18qI8zXTJgocQefsoS1Y0gWuwI-T3zz6L=w900-rp' },
     { type: 'photo', tag: 'FEMININE', size: 'L', align: 'center' },
-    { type: 'cat',   tag: 'FEMININE', size: 'L', align: 'center' },
     { type: 'photo', tag: 'FEMININE', size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1qFKseDCq05wQ7A9CwIAD_UpdEJG-c_K_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1GcuZWQij6Cozr-Kyg2nEbXwp7w6hJ7RU=w900-rp' },
     { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'right' },
