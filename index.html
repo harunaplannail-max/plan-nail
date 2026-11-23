@@ -3741,7 +3741,13 @@ function ccBoardCard(n, ordered, segs, used) {
     card.appendChild(row);
   }
   ['tl', 'tr', 'bl', 'br'].forEach(cn => { const d = document.createElement('span'); d.className = 'cc-magnet ' + cn; card.appendChild(d); });
-  card.onclick = () => openScatter(ccBoardTagName(slot.tag));
+  // Playが開くのは、そのタグと関連のあるカードだけ(カテゴリカードとPlay背景の写真カード)。
+  // Harunaのムード写真・コラージュは飾りなので開かない (2026-11-23)
+  if (!slot.img && slot.type !== 'collage') {
+    card.onclick = () => openScatter(ccBoardTagName(slot.tag));
+  } else {
+    card.style.cursor = 'default';
+  }
   return card;
 }
 let ccFieldLastSegs = 0;
