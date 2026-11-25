@@ -3618,7 +3618,7 @@ function ccHueSortKey(m) {
 const CC_BOARD = {
   every: 12, // 14色ごとに1枚 (2026-11-23 枠を増やした)
   slots: [
-    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, fade: 1, img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, fade: 1, tall: 1.3, over: [-55, -25], img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
     { type: 'none' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
@@ -3722,7 +3722,8 @@ function ccBoardCard(n, ordered, segs, used) {
     card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
     if (slot.fw) { // 2026-11-25 Haruna: 左右だけ画面いっぱいに (高さはそのまま)
       const rp = CC_BOARD.photoRatio[slot.size].split('/').map(Number);
-      const hPct = g.w * rp[1] / rp[0];
+      let hPct = g.w * rp[1] / rp[0];
+      if (slot.tall) hPct *= slot.tall; // 上下幅を広げる
       card.style.width = '118%'; card.style.marginLeft = '-9%';
       card.style.aspectRatio = (118 / hPct).toFixed(3);
     }
