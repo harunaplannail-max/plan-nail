@@ -474,7 +474,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #collageTextInput:focus{outline:none;border-color:var(--c1);}
 .collage-text-modal-actions{display:flex;gap:8px;}
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
-.cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);}
+.cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);line-break:strict;}
 .cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
 .cd-name-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;}
 .cd-name-row .cd-name{margin:0;}
@@ -4017,7 +4017,17 @@ function openColorDetail(c, fromHistory) {
 
   appendInstagramSlide(c, wrap, updateDots);
 
-  document.getElementById('cdName').textContent = c.name || '';
+  const cdNameEl = document.getElementById('cdName');
+  const nmFull = c.name || '';
+  const nmSp = nmFull.indexOf(' ');
+  let nmW = 0; for (const ch of nmFull) nmW += ch.charCodeAt(0) < 128 ? 0.55 : 1;
+  if (nmSp > 0 && nmW > 11) {
+    // 長い名前は品番と色名の間で2行にする (2026-11-25 Haruna)
+    cdNameEl.textContent = '';
+    cdNameEl.append(document.createTextNode(nmFull.slice(0, nmSp)), document.createElement('br'), document.createTextNode(nmFull.slice(nmSp + 1)));
+  } else {
+    cdNameEl.textContent = nmFull;
+  }
   const isTrendItem = c.__src === 'trend';
   document.getElementById('cdMakerRow').style.display = 'none';
   document.getElementById('cdMaker').textContent = c.maker || c.tag || '—';
