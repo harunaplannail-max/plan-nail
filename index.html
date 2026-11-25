@@ -3618,7 +3618,7 @@ function ccHueSortKey(m) {
 const CC_BOARD = {
   every: 12, // 14色ごとに1枚 (2026-11-23 枠を増やした)
   slots: [
-    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, fade: 1, img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
     { type: 'none' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
@@ -3763,6 +3763,10 @@ function ccBoardCard(n, ordered, segs, used) {
   // Harunaのムード写真・コラージュは飾りなので開かない (2026-11-23)
   // 2026-11-25 Haruna: 一旦Playに飛ぶ所は全部なくす (戻す時はこのブロックを元の分岐に戻す)
   card.style.cursor = 'default';
+  if (slot.fade) { // 上下端をグラデーションで透明に (真ん中が濃い)
+    const m = 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 32%, rgba(0,0,0,1) 68%, rgba(0,0,0,0) 100%)';
+    card.style.webkitMaskImage = m; card.style.maskImage = m;
+  }
   if (slot.over) { // 上下のチャートをこのカードに被せる (真ん中に少しだけ間)
     const ov = Array.isArray(slot.over) ? slot.over : [-80, -50];
     card.style.marginTop = ov[0] + 'px'; card.style.marginBottom = ov[1] + 'px'; card.style.zIndex = '0';
