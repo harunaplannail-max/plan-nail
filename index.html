@@ -3622,6 +3622,7 @@ const CC_BOARD = {
     { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/1iHaVjNGKxokrMYyOG7dJ9HSFtMM1FcoP=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
+    { type: 'none' },
     { type: 'cat',   tag: 'HOLIDAY',  size: 'L', align: 'center' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'left',   img: 'https://lh3.googleusercontent.com/d/1Yg8obyFEQ6uSAnZpJwoLOWM1-13kjx2w=w900-rp' },
     { type: 'cat',   tag: 'FEMININE', size: 'M', align: 'left' },
@@ -3635,6 +3636,7 @@ const CC_BOARD = {
         { img: 'https://lh3.googleusercontent.com/d/1zrCUtDs4GVXTZ5ArEE1ENulCUaIJdYJr=w900-rp', x: 3, y: 8, w: 46, ar: '3 / 4' },
         { img: 'https://lh3.googleusercontent.com/d/1VJlAQFxpE3aFm_tZ9u7kSTOlFHm6KcUF=w700-rp', x: 44, y: 6, w: 53, ar: '700 / 478', die: 1 },
         { img: 'https://lh3.googleusercontent.com/d/1kGXTA0ML2DAuNw5hLcGOqlJfK0DUfXsc=w900-rp', x: 58, y: 60, w: 30, ar: '3 / 4' } ] },
+    { type: 'none' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1mG2Md8qfMr_GEsPCYtapSagGGZyW9s17=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1k5VGjj6d1okxFcdKxg199gsMVnHnAv9U=w900-rp' },
     { type: 'photo', tag: 'HOLIDAY',  size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/1_8ol8IeNLNKxOPU_fVnRahC0kVAYqQ_X=w900-rp' },
@@ -3705,6 +3707,7 @@ function ccBoardChip(c, chipPct) {
 // n枚目の挿入カードを作る。used = タグごとに使ったチップの数(同じタグの2枚目は続きの色を見せる)
 function ccBoardCard(n, ordered, segs, used) {
   const slot = CC_BOARD.slots[n % CC_BOARD.slots.length];
+  if (!slot || slot.type === 'none') return null;
   const g = CC_BOARD.geom[slot.size];
   const card = document.createElement('div');
   card.className = 'cc-board-card ' + slot.type;
@@ -3868,7 +3871,8 @@ function renderColorGrids() {
       grid.appendChild(row);
       pos += items.length;
       if (board && pos >= nextBoardAt && pos < filtered.length) {
-        grid.appendChild(ccBoardCard(boardN++, filtered, segs, boardUsed));
+        const bc = ccBoardCard(boardN++, filtered, segs, boardUsed);
+        if (bc) grid.appendChild(bc);
         nextBoardAt += CC_BOARD.every;
       }
     }
