@@ -476,7 +476,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);line-break:strict;}
 .color-name,.featured-code,.series-sw-code{line-break:strict;}
-.cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
+.cd-desc{font-size:.8rem;line-height:1.75;color:rgba(255,255,255,.7);margin:0 0 16px;white-space:pre-line;}
+#svdDesc{white-space:pre-line;}
 .cd-name-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;}
 .cd-name-row .cd-name{margin:0;}
 .cd-maker-logo{flex:0 0 auto;background:#fff;border-radius:7px;padding:5px 9px;line-height:0;box-shadow:0 2px 8px rgba(0,0,0,.35);}
@@ -510,7 +511,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .series-panel-img{ width:100%; height:auto; display:block; border-radius:14px; margin-bottom:16px;
   box-shadow:0 8px 20px rgba(0,0,0,.35); }
 .series-panel-name{ font-family:'Special Elite','Kosugi',sans-serif; font-size:1.05rem; margin:0 0 6px; color:#fff; }
-.series-panel-desc{ font-size:.76rem; color:rgba(255,255,255,.65); line-height:1.7; margin:0 0 18px; }
+.series-panel-desc{ font-size:.76rem; color:rgba(255,255,255,.65); line-height:1.75; margin:0 0 18px; white-space:pre-line; }
 .series-panel-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 
 /* GUEST DETAIL: プロフィール+作品集(DESIGNS_DBを「作者」で絞り込んだデザインギャラリー) */
@@ -3968,6 +3969,8 @@ function openColorDetail(c, fromHistory) {
   const wrap = document.getElementById('cdImgWrap');
   const dots = document.getElementById('cdImgDots');
   wrap.innerHTML = ''; wrap.style.height = '';
+  wrap.scrollLeft = 0;
+  const cdPanelEl = document.querySelector('#cdOverlay .cd-panel'); if (cdPanelEl) cdPanelEl.scrollTop = 0;
   // パーツのヒーロー写真だけ小さめに見せる(実物が数mmのものを画面いっぱいに
   // 広げると大きさの感覚が狂うため)。素材・トレンド・デザインは従来どおり。
   // (トレンド/デザインにはサイズ項目が無いので、サイズ有無の判定で混ざらない)
@@ -4120,6 +4123,7 @@ function openColorDetail(c, fromHistory) {
       b.onclick = (e) => { e.stopPropagation(); if (m !== c) openColorDetail(m); };
       strip.appendChild(b);
     });
+    strip.scrollLeft = 0;
 
   } else {
     strip.style.display = 'none';
@@ -4408,6 +4412,21 @@ function appendInstagramSlide(c, wrap, updateDots) {
   }
 }
 
+// 説明文を読みやすく整形する: 文ごとに改行し、長い文は読点の真ん中で改行
+function formatDescText(text) {
+  if (!text) return '';
+  let t = String(text).replace(/\s+/g, ' ').trim();
+  t = t.replace(/([。！？])\s*/g, '$1\n');
+  t = t.split('\n').map(line => {
+    if (line.length <= 26) return line;
+    const commas = [...line.matchAll(/、/g)].map(m => m.index);
+    if (!commas.length) return line;
+    const mid = line.length / 2;
+    const at = commas.reduce((a, b) => Math.abs(b - mid) < Math.abs(a - mid) ? b : a);
+    return line.slice(0, at + 1) + '\n' + line.slice(at + 1);
+  }).join('\n');
+  return t.replace(/\n+$/, '');
+}
 // 説明文をタイプライターで1文字ずつ打ち出す。サイトの書体(Special Elite)に
 // 必然性を持たせる演出。端末が「視差を減らす」設定なら即時表示にする。
 let cdTypeTimer = null;
@@ -4417,6 +4436,7 @@ function typeDescription(text) {
   el.classList.remove('typing');
   if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
   el.style.display = 'block';
+  text = formatDescText(text);
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     el.textContent = text;
     return;
@@ -4514,7 +4534,7 @@ function openSeriesPopup(seriesName) {
   // パーツの色違い: 同じシリーズ名のパーツを、そのまま並べる
   if (!rep && partMembers.length) {
     const pDesc = (partMembers.find(p => p.seriesDesc) || {}).seriesDesc || '';
-    descEl.textContent = pDesc;
+    descEl.textContent = formatDescText(pDesc);
     descEl.style.display = pDesc ? 'block' : 'none';
     partMembers.forEach(part => {
       const cell = document.createElement('div');
@@ -4544,7 +4564,7 @@ function openSeriesPopup(seriesName) {
     return;
   }
 
-  descEl.textContent = rep.seriesDesc || '';
+  descEl.textContent = formatDescText(rep.seriesDesc || '');
   descEl.style.display = rep.seriesDesc ? 'block' : 'none';
 
   colorList.forEach(code => {
@@ -6974,7 +6994,7 @@ function openDetail(item, img) {
   document.getElementById('svdTag').textContent = item.category || item.tag || item.mood || '';
   breakName(document.getElementById('svdName'), item.name, 11);
   document.getElementById('svdPrice').textContent = item.price || item.maker || '';
-  document.getElementById('svdDesc').textContent = item.desc || '';
+  document.getElementById('svdDesc').textContent = formatDescText(item.desc || '');
   document.getElementById('svDetail').classList.add('open');
 }
 function closeDetail() { document.getElementById('svDetail').classList.remove('open'); }
@@ -7611,6 +7631,10 @@ document.querySelectorAll('.sv-topbar').forEach(bar => {
 </script>
 <div id="topTapZone" style="position:fixed;top:0;left:96px;right:96px;height:max(env(safe-area-inset-top),18px);z-index:9998;"></div>
 <script>
+document.addEventListener('error', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.src && !t.dataset.retried) { t.dataset.retried = '1'; const s = t.src; setTimeout(() => { t.src = s; }, 900); }
+}, true);
 document.getElementById('topTapZone').addEventListener('click', () => {
   const cd = document.getElementById('cdOverlay');
   if (cd && cd.classList.contains('open')) {
