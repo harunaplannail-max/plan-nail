@@ -3618,8 +3618,8 @@ function ccHueSortKey(m) {
 const CC_BOARD = {
   every: 12, // 14色ごとに1枚 (2026-11-23 枠を増やした)
   slots: [
-    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
-    { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', fw: 1, img: 'https://lh3.googleusercontent.com/d/1iHaVjNGKxokrMYyOG7dJ9HSFtMM1FcoP=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, over: [-55, -25], img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', fw: 1, over: [-55, -25], img: 'https://lh3.googleusercontent.com/d/1iHaVjNGKxokrMYyOG7dJ9HSFtMM1FcoP=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
     { type: 'none' },
@@ -3762,7 +3762,8 @@ function ccBoardCard(n, ordered, segs, used) {
   // 2026-11-25 Haruna: 一旦Playに飛ぶ所は全部なくす (戻す時はこのブロックを元の分岐に戻す)
   card.style.cursor = 'default';
   if (slot.over) { // 上下のチャートをこのカードに被せる (真ん中に少しだけ間)
-    card.style.marginTop = '-80px'; card.style.marginBottom = '-50px'; card.style.zIndex = '0';
+    const ov = Array.isArray(slot.over) ? slot.over : [-80, -50];
+    card.style.marginTop = ov[0] + 'px'; card.style.marginBottom = ov[1] + 'px'; card.style.zIndex = '0';
   }
   return card;
 }
