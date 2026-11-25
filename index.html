@@ -476,6 +476,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);}
 .cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
+.cd-series-strip{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.cd-series-strip::-webkit-scrollbar{display:none;}
+.cd-series-chip{flex:0 0 auto;width:44px;aspect-ratio:0.72;padding:0;border:2px solid rgba(255,255,255,.18);border-radius:9px;overflow:hidden;background:#2a2a2e;cursor:pointer;}
+.cd-series-chip img{width:100%;height:100%;object-fit:cover;display:block;}
+.cd-series-chip.on{border-color:#fff;}
 .cd-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;}
 .cd-used-items-wrap{display:none;padding:9px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;}
 .cd-used-items-wrap.show{display:block;}
@@ -1708,6 +1713,7 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
     <div class="cd-body">
       <h3 id="cdName" class="cd-name"></h3>
       <p id="cdDesc" class="cd-desc"></p>
+      <div id="cdSeriesStrip" class="cd-series-strip" style="display:none;"></div>
       <div class="cd-row" id="cdMakerRow"><span class="cd-label">メーカー</span><span id="cdMaker" class="cd-value"></span></div>
       <div class="cd-row"><span class="cd-label" id="cdCategoryLabel">カテゴリ</span><span id="cdCategory" class="cd-value"></span></div>
       <div class="cd-row" id="cdMoodRow"><span class="cd-label">ムード</span><span id="cdMood" class="cd-value"></span></div>
@@ -4013,6 +4019,51 @@ function openColorDetail(c, fromHistory) {
     seriesEl.onclick = (e) => { e.stopPropagation(); openSeriesPopup(c.series); };
   } else {
     seriesRow.style.display = 'none';
+  }
+  // シリーズ全色の横スクロール帯 (2026-11-25 Haruna)
+  const strip = document.getElementById('cdSeriesStrip');
+  strip.innerHTML = '';
+  let stripMembers = [];
+  if (!isTrendItem && c.series) {
+    const repS = notionMaterials.find(m => m.series === c.series && m.seriesColorList);
+    if (repS) {
+      const norm = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const owned = notionMaterials.filter(m => m.series === c.series);
+      stripMembers = repS.seriesColorList.split(',').map(code => owned.find(m => norm(m.name) === norm(code))).filter(Boolean);
+      const inList = new Set(stripMembers);
+      owned.forEach(m => { if (!inList.has(m)) stripMembers.push(m); });
+    } else if (notionMaterials.some(m => m.series === c.series)) {
+      stripMembers = notionMaterials.filter(m => m.series === c.series);
+    } else {
+      stripMembers = notionParts.filter(p => p.series === c.series).sort((a, b) => {
+        const sa = extractSizeMetric(a.size), sb = extractSizeMetric(b.size);
+        if (sa == null && sb == null) return String(a.name).localeCompare(String(b.name), 'ja');
+        if (sa == null) return 1;
+        if (sb == null) return -1;
+        return (sa - sb) || String(a.name).localeCompare(String(b.name), 'ja');
+      });
+    }
+  }
+  if (stripMembers.length >= 2) {
+    strip.style.display = 'flex';
+    stripMembers.forEach(m => {
+      const b = document.createElement('button');
+      b.className = 'cd-series-chip' + (m === c ? ' on' : '');
+      b.title = m.name || '';
+      const srcS = m.thumbSmall || m.thumb || '';
+      if (srcS) {
+        const im = document.createElement('img');
+        im.src = srcS; im.alt = m.name || ''; im.loading = 'lazy'; im.decoding = 'async';
+        b.appendChild(im);
+      } else {
+        b.style.background = m.css || '#888';
+      }
+      b.onclick = (e) => { e.stopPropagation(); if (m !== c) openColorDetail(m); };
+      strip.appendChild(b);
+    });
+    requestAnimationFrame(() => { const on = strip.querySelector('.on'); if (on) strip.scrollLeft = Math.max(0, on.offsetLeft - 12); });
+  } else {
+    strip.style.display = 'none';
   }
   const craftRow = document.getElementById('cdCraftRow');
   const craftNotice = document.getElementById('cdCraftNotice');
