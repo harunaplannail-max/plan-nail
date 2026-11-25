@@ -379,7 +379,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .parts-price-tag{position:absolute;bottom:4px;right:4px;font-family:'Special Elite','Kosugi',sans-serif;font-size:.6rem;letter-spacing:.03em;padding:2px 6px;color:#fff;background:rgba(20,20,20,.75);z-index:1;border-radius:2px;}
 .cd-overlay{position:fixed;inset:0;z-index:9500;background:rgba(20,20,20,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .3s;}
 .cd-overlay.open{opacity:1;pointer-events:all;}
-.cd-panel{position:relative;background:linear-gradient(165deg,rgba(255,255,255,.20) 0%,rgba(255,255,255,.06) 34%,rgba(255,255,255,.02) 62%,rgba(255,255,255,.09) 100%),rgba(24,24,30,.40);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.35);box-shadow:0 24px 60px rgba(0,0,0,.42),0 4px 18px rgba(0,0,0,.25),inset 0 1px 1px rgba(255,255,255,.45),inset 0 -1px 1px rgba(255,255,255,.12),inset 1px 0 0 rgba(255,255,255,.08),inset -1px 0 0 rgba(255,255,255,.08);width:90%;max-width:400px;max-height:78vh;overflow-y:auto;border-radius:28px;overscroll-behavior:contain;}
+.cd-panel{position:relative;background:linear-gradient(165deg,rgba(255,255,255,.13) 0%,rgba(255,255,255,.03) 34%,rgba(255,255,255,.01) 62%,rgba(255,255,255,.05) 100%),rgba(22,22,28,.16);backdrop-filter:blur(24px) saturate(1.7);-webkit-backdrop-filter:blur(24px) saturate(1.7);border:1px solid rgba(255,255,255,.35);box-shadow:0 24px 60px rgba(0,0,0,.42),0 4px 18px rgba(0,0,0,.25),inset 0 1px 1px rgba(255,255,255,.45),inset 0 -1px 1px rgba(255,255,255,.12),inset 1px 0 0 rgba(255,255,255,.08),inset -1px 0 0 rgba(255,255,255,.08);width:90%;max-width:400px;max-height:78vh;overflow-y:auto;border-radius:28px;overscroll-behavior:contain;}
 .cd-close{position:absolute;top:10px;right:12px;z-index:2;background:rgba(0,0,0,.5);color:#fff;border:none;width:32px;height:32px;border-radius:50%;font-size:1.2rem;line-height:1;cursor:pointer;}
 .cd-img-outer{position:relative;}
 /* 説明文をタイプ中はカーソルを点滅させる */
@@ -4003,7 +4003,8 @@ function openColorDetail(c, fromHistory) {
       const img = document.createElement('img');
       img.alt = c.name || '';
       if (i === 0) {
-        // 最初の1枚(開いた瞬間に見える分)だけ即読み込み
+        // 最初の1枚(開いた瞬間に見える分)だけ即読み込み + 最優先
+        img.fetchPriority = 'high';
         loadImgWithRetry(img, src, () => { img.remove(); updateDots(); });
       } else {
         // 2枚目以降は横スクロールで近づくまで読み込みを遅らせる。
@@ -7589,11 +7590,12 @@ updateFavCount();
     tries++;
     const urls = [];
     try {
-      if (typeof notionMaterials !== 'undefined') notionMaterials.slice(0, 30).forEach(m => { if (m && m.material) urls.push(m.material.replace('=w900-rp', '=w700-rp')); });
-      if (typeof notionParts !== 'undefined') notionParts.slice(0, 20).forEach(p => { if (p && p.material) urls.push(p.material.replace('=w900-rp', '=w700-rp')); });
+      if (typeof notionMaterials !== 'undefined') notionMaterials.slice(0, 90).forEach(m => { if (m && m.material) urls.push(m.material.replace('=w900-rp', '=w700-rp')); });
+      if (typeof notionParts !== 'undefined') notionParts.slice(0, 50).forEach(p => { if (p && p.material) urls.push(p.material.replace('=w900-rp', '=w700-rp')); });
     } catch (e) {}
     if (!urls.length && tries < 8) { setTimeout(pre, 1500); return; }
-    urls.forEach(u => { const i = new Image(); i.src = u; });
+    let qi = 0;
+    (function pump(){ const chunk = urls.slice(qi, qi + 10); qi += 10; chunk.forEach(u => { const i = new Image(); i.src = u; }); if (qi < urls.length) setTimeout(pump, 400); })();
   }
   setTimeout(pre, 2500);
 })();
