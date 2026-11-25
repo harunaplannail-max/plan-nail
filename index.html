@@ -4167,9 +4167,8 @@ function openColorDetail(c, fromHistory) {
   favHeartWrap.innerHTML = '';
   if (c.id) favHeartWrap.appendChild(buildFavHeart(c));
 
-  const sizeRow = document.getElementById('cdSizeRow');
-  if (c.size) { sizeRow.style.display='flex'; document.getElementById('cdSize').textContent = c.size + 'mm'; }
-  else { sizeRow.style.display='none'; }
+  // サイズ欄は上の「実際の大きさ」で表記しているので出さない (2026-11-26 Haruna)
+  document.getElementById('cdSizeRow').style.display = 'none';
 
   // 「実際の大きさ」欄: サイズ(mm)はパーツにしか無い項目なので、サイズに数字が含まれる時だけ出す。
   // CSS側の既定幅11.54mmは「サムネイルが52px/mm・画布600pxで焼かれている」前提の値だが、
