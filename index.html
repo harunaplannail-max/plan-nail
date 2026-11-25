@@ -3623,9 +3623,9 @@ const CC_BOARD = {
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
     { type: 'none' },
-    { type: 'cat',   tag: 'HOLIDAY',  size: 'L', align: 'center' },
+    { type: 'none' }, // Play関連 (元カテゴリカード) 2026-11-25
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'left',   img: 'https://lh3.googleusercontent.com/d/1Yg8obyFEQ6uSAnZpJwoLOWM1-13kjx2w=w900-rp' },
-    { type: 'cat',   tag: 'FEMININE', size: 'M', align: 'left' },
+    { type: 'none' }, // Play関連 (元カテゴリカード) 2026-11-25
     { type: 'collage', tag: 'FEMININE', size: 'M', align: 'left', els: [
         { img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp', x: 3, y: 7, w: 54, ar: '4 / 3' },
         { img: 'https://lh3.googleusercontent.com/d/1NodIC5JqlKBdHMGakOcj9dzzN3RQef66=w700-rp', x: 47, y: 36, w: 50, ar: '700 / 478', die: 1 },
@@ -3642,10 +3642,10 @@ const CC_BOARD = {
     { type: 'photo', tag: 'HOLIDAY',  size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/1_8ol8IeNLNKxOPU_fVnRahC0kVAYqQ_X=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1G4TeV24IpJzq1_STrYBYIjcbSSUfNOKv=w900-rp' },
     { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/18qI8zXTJgocQefsoS1Y0gWuwI-T3zz6L=w900-rp' },
-    { type: 'photo', tag: 'FEMININE', size: 'L', align: 'center' },
+    { type: 'none' }, // Play関連 (元Play背景カード) 2026-11-25
     { type: 'photo', tag: 'FEMININE', size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1qFKseDCq05wQ7A9CwIAD_UpdEJG-c_K_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1GcuZWQij6Cozr-Kyg2nEbXwp7w6hJ7RU=w900-rp' },
-    { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'right' },
+    { type: 'none' }, // Play関連 (元Play背景カード) 2026-11-25
   ],
   // カードの幅と左位置(配列の内側の幅に対する%)。L はチップの列の外側の端から端まで
   geom: {
@@ -3658,7 +3658,6 @@ const CC_BOARD = {
   photoRatio: { L: '16 / 10', M: '4 / 3', S: '1 / 1', W: '3 / 1' },
 };
 function ccBoardActive(key) {
-  return false; // 2026-11-25 Haruna: ボードカードごと全部なくす (スロットデータは残置。戻す時はこの行を消す)
   return key === 'ALL' && ccSortOrder === 'hue' && ccMakerFilter === 'ALL' && ccMoodFilter === 'ALL' && ccColorFilter === 'ALL';
 }
 // データの中での実際のタグ表記(例 'Holiday')。Playのボタンと同じ表記で開くため
