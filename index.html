@@ -4415,17 +4415,23 @@ function appendInstagramSlide(c, wrap, updateDots) {
 // 説明文を読みやすく整形する: 文ごとに改行し、長い文は読点の真ん中で改行
 function formatDescText(text) {
   if (!text) return '';
-  let t = String(text).replace(/\s+/g, ' ').trim();
-  t = t.replace(/([。！？])\s*/g, '$1\n');
-  t = t.split('\n').map(line => {
+  // 元々入っている改行は活かす (潰さない)
+  const fmtLine = (line) => {
     if (line.length <= 26) return line;
     const commas = [...line.matchAll(/、/g)].map(m => m.index);
     if (!commas.length) return line;
     const mid = line.length / 2;
     const at = commas.reduce((a, b) => Math.abs(b - mid) < Math.abs(a - mid) ? b : a);
     return line.slice(0, at + 1) + '\n' + line.slice(at + 1);
-  }).join('\n');
-  return t.replace(/\n+$/, '');
+  };
+  return String(text)
+    .split('\n')
+    .map(seg => seg.replace(/[ \t]+/g, ' ').trim().replace(/([。！？]) */g, '$1\n'))
+    .join('\n')
+    .split('\n')
+    .map(fmtLine)
+    .join('\n')
+    .replace(/^\n+|\n+$/g, '');
 }
 // 説明文をタイプライターで1文字ずつ打ち出す。サイトの書体(Special Elite)に
 // 必然性を持たせる演出。端末が「視差を減らす」設定なら即時表示にする。
