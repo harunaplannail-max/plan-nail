@@ -3658,6 +3658,7 @@ const CC_BOARD = {
   photoRatio: { L: '16 / 10', M: '4 / 3', S: '1 / 1', W: '3 / 1' },
 };
 function ccBoardActive(key) {
+  return false; // 2026-11-25 Haruna: ボードカードごと全部なくす (スロットデータは残置。戻す時はこの行を消す)
   return key === 'ALL' && ccSortOrder === 'hue' && ccMakerFilter === 'ALL' && ccMoodFilter === 'ALL' && ccColorFilter === 'ALL';
 }
 // データの中での実際のタグ表記(例 'Holiday')。Playのボタンと同じ表記で開くため
