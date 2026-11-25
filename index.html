@@ -476,7 +476,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);}
 .cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
-.cd-maker-logo{position:absolute;left:12px;bottom:12px;background:#fff;border-radius:7px;padding:5px 9px;line-height:0;box-shadow:0 2px 8px rgba(0,0,0,.35);z-index:5;}
+.cd-name-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;}
+.cd-name-row .cd-name{margin:0;}
+.cd-maker-logo{flex:0 0 auto;background:#fff;border-radius:7px;padding:5px 9px;line-height:0;box-shadow:0 2px 8px rgba(0,0,0,.35);}
 .cd-maker-logo img{height:15px;width:auto;display:block;}
 .cd-series-block{padding:12px 20px 0;}
 .cd-series-name{display:inline-block;font-size:.9rem;color:var(--white,#fff);text-decoration:underline;cursor:pointer;}
@@ -1706,7 +1708,6 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
     <div class="cd-img-outer">
       <div class="cd-img-wrap" id="cdImgWrap"></div>
       <span class="cd-badge-corner" id="cdBadgeCorner"></span>
-      <span class="cd-maker-logo" id="cdMakerLogo" style="display:none;"><img id="cdMakerLogoImg" alt=""></span>
       <div class="cd-fav-heart-wrap" id="cdFavHeartWrap"></div>
     </div>
     <div class="cd-img-dots" id="cdImgDots"></div>
@@ -1720,7 +1721,7 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
       <div class="cd-true-size-scale"><span class="cd-true-size-bar"></span><span class="cd-true-size-bar-label">10mm</span></div>
     </div>
     <div class="cd-body">
-      <h3 id="cdName" class="cd-name"></h3>
+      <div class="cd-name-row"><h3 id="cdName" class="cd-name"></h3><span class="cd-maker-logo" id="cdMakerLogo" style="display:none;"><img id="cdMakerLogoImg" alt=""></span></div>
       <p id="cdDesc" class="cd-desc"></p>
       <div class="cd-row" id="cdMakerRow"><span class="cd-label">メーカー</span><span id="cdMaker" class="cd-value"></span></div>
       <div class="cd-row" id="cdCategoryRow" style="display:none;"><span class="cd-label" id="cdCategoryLabel">カテゴリ</span><span id="cdCategory" class="cd-value"></span></div>
