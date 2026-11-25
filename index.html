@@ -475,6 +475,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions{display:flex;gap:8px;}
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);line-break:strict;}
+.color-name,.featured-code,.series-sw-code{line-break:strict;}
 .cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
 .cd-name-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;}
 .cd-name-row .cd-name{margin:0;}
@@ -3486,7 +3487,7 @@ function renderFeaturedShelf() {
     item.appendChild(sw);
     const label = document.createElement('div');
     label.className = 'featured-code';
-    label.textContent = c.name || '';
+    breakName(label, c.name, 7.5);
     item.appendChild(label);
     item.onclick = () => openColorDetail(c);
     scroller.appendChild(item);
@@ -3896,7 +3897,7 @@ function renderColorGrids() {
         el.appendChild(buildFavHeart(c));
         const label = document.createElement('span');
         label.className = 'color-name';
-        label.textContent = c.name || '';
+        breakName(label, c.name, 7.5);
         el.appendChild(label);
         el.onclick = () => openColorDetail(c);
         row.appendChild(el);
@@ -3925,6 +3926,18 @@ let colorDetailHistory = [];
 let currentDetailItem = null;
 
 let cdBadgeFadeTimer = null;
+// 長い商品名は品番と色名の間で2行に割る (2026-11-25 Haruna)
+function breakName(el, name, th) {
+  const s = String(name || '');
+  const sp = s.indexOf(' ');
+  let w = 0; for (const ch of s) w += ch.charCodeAt(0) < 128 ? 0.55 : 1;
+  if (sp > 0 && w > (th || 11)) {
+    el.textContent = '';
+    el.append(document.createTextNode(s.slice(0, sp)), document.createElement('br'), document.createTextNode(s.slice(sp + 1)));
+  } else {
+    el.textContent = s;
+  }
+}
 const MAKER_LOGOS = {"loade": "https://lh3.googleusercontent.com/d/1-azsV29jLCUPESIhUrJ0ldsF45uoi8xR=w700-rp", "KOKOIST": "https://lh3.googleusercontent.com/d/1pUAAQzxXVNWS4sdg55MkzUI_EYjkeyo3=w700-rp", "lem.": "https://lh3.googleusercontent.com/d/1ebX7ZrnnAouOXeQaADp8AO7wpo-yS8Za=w700-rp", "PREGEL": "https://lh3.googleusercontent.com/d/1tzj2nTf2Z8KSOyN-wuKjghPva-GIpePe=w700-rp", "SHAREDVA": "https://lh3.googleusercontent.com/d/1WENGRbnuTkYbPfDD0HPZ14isOsdVPJcl=w700-rp", "TOY’s by INITY": "https://lh3.googleusercontent.com/d/1mrnv0XSf3LUeexkWw79lEnZwDtIzyRsJ=w700-rp", "INITY": "https://lh3.googleusercontent.com/d/1_eoeCDav7oLQ7yWnvL1SrGhVI3Uz38yI=w700-rp", "Putiel": "https://lh3.googleusercontent.com/d/1-BR2xgFbse9KYU1AcmAlVFe9IUtm1HaC=w700-rp", "TRINA": "https://lh3.googleusercontent.com/d/1VEP0W78c-qWm6BCQOM92zsCkEnmunemb=w700-rp", "GELGRAPH": "https://lh3.googleusercontent.com/d/1b5irQREQEjdUrZ3uvjCPk0-uK3tZpvPa=w700-rp", "CLETO": "https://lh3.googleusercontent.com/d/1VSjNEmfUpeC0F88exOCGv8JjIcRV9Sxx=w700-rp", "enoi": "https://lh3.googleusercontent.com/d/1LwokKDsb0CahJ3NnMa_8EJ6N_qSlQHVx=w700-rp", "Irie": "https://lh3.googleusercontent.com/d/1XqAx9A4ztgmNCBeMEZ5AxwmjONQgEfSc=w700-rp", "ICE GEL": "https://lh3.googleusercontent.com/d/1W2wA7_7KwvKvzrgP6FotJdldAldPvm9q=w700-rp", "ミラージュ": "https://lh3.googleusercontent.com/d/1Qh_z6ZmlOYRmqYYOdD-GMk3KfRuX8GKk=w700-rp", "フルーリア": "https://lh3.googleusercontent.com/d/18dx58tg90NGBzSAolhgzsGc9JGoKNOtC=w700-rp", "AURORA": "https://lh3.googleusercontent.com/d/1_BGDi_J1wN3L9ZNgxgSGzGirgrxKh8VX=w700-rp", "D.nail": "https://lh3.googleusercontent.com/d/1DhR71d3ViGduRS_4nnvv9tY7MnXeAQ_k=w700-rp", "DECOPANIC": "https://lh3.googleusercontent.com/d/1BE6RP3_IxuAYQ8gIbXyT0COAHsqkM3Z3=w700-rp", "MATIERE": "https://lh3.googleusercontent.com/d/11hE2KL4Sgd13nFjzr5vwVovrJmqDL9oW=w700-rp", "PRECIOSA": "https://lh3.googleusercontent.com/d/1zmK3ipBECl-VXI8_e1eRpvZ607ZNmVVa=w700-rp", "SONAIL": "https://lh3.googleusercontent.com/d/1S4JRT2Pc-uuLA7K8VsIxPd0IumUR8vWt=w700-rp", "シンディベンディ": "https://lh3.googleusercontent.com/d/1iuH7oZhwlx62PFahuUFCwz-rUTB9-kRa=w700-rp"};
 // ロゴは小さい版を先読みしておく (詳細カードで一瞬で出すため)
 Object.values(MAKER_LOGOS).forEach(u => { const i = new Image(); i.src = u; });
@@ -4511,7 +4524,9 @@ function openSeriesPopup(seriesName) {
       const sz = extractSizeMetric(part.size);
       // サイズ別一覧では拡大補正をせず、画像に描かれた実寸スケールのまま見せる
       // (グリッドのシリーズカード側は大きめ表示のまま。2026-11-13 Haruna指示)
-      cell.querySelector('.series-sw-code').textContent = (part.name || '') + (showPartSize && sz != null ? ' · ' + sz + 'mm' : '');
+      const codeEl = cell.querySelector('.series-sw-code');
+      breakName(codeEl, part.name, 11);
+      if (showPartSize && sz != null) codeEl.append(document.createTextNode(' · ' + sz + 'mm'));
       cell.onclick = () => { closeSeriesPopup(); openColorDetail(part); };
       gridEl.appendChild(cell);
     });
@@ -4719,7 +4734,7 @@ function renderFavGrid() {
     el.appendChild(buildFavHeart(f));
     const label = document.createElement('span');
     label.className = 'color-name';
-    label.textContent = f.name || '';
+    breakName(label, f.name, 7.5);
     el.appendChild(label);
     el.onclick = () => {
       // 元データが今も存在すればそちらを、無ければ保存時のスナップショットを使う
@@ -5684,7 +5699,7 @@ function renderPartsGrid() {
     // 在庫切れ表示は詳細ポップアップ左上のバッジ(openColorDetail側)だけに任せる。
     const label = document.createElement('span');
     label.className = 'color-name';
-    label.textContent = seriesGroup ? p.series : (p.name || '');
+    if (seriesGroup) { label.textContent = p.series; } else { breakName(label, p.name, 7.5); }
     el.appendChild(label);
     el.onclick = () => seriesGroup ? openSeriesPopup(p.series) : openColorDetail(p);
     grid.appendChild(el);
@@ -5954,7 +5969,7 @@ function renderTrendsScatter() {
     el.appendChild(buildFavHeart(t));
     const label = document.createElement('span');
     label.className = 'color-name';
-    label.textContent = t.name || '';
+    breakName(label, t.name, 7.5);
     el.appendChild(label);
     el.onclick = () => openColorDetail({...t, __src:'trend'});
     wrap.appendChild(el);
@@ -6030,7 +6045,7 @@ function renderPublic() {
     }
     const label = document.createElement('span');
     label.className = 'color-name';
-    label.textContent = it.name || '';
+    breakName(label, it.name, 7.5);
     el.appendChild(label);
     el.onclick = () => openColorDetail(it);
     return el;
@@ -6954,7 +6969,7 @@ function openDetail(item, img) {
   document.getElementById('svdImg').src = img || '';
   document.getElementById('svdImg').style.display = img ? 'block' : 'none';
   document.getElementById('svdTag').textContent = item.category || item.tag || item.mood || '';
-  document.getElementById('svdName').textContent = item.name || '';
+  breakName(document.getElementById('svdName'), item.name, 11);
   document.getElementById('svdPrice').textContent = item.price || item.maker || '';
   document.getElementById('svdDesc').textContent = item.desc || '';
   document.getElementById('svDetail').classList.add('open');
