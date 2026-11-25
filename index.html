@@ -3618,7 +3618,7 @@ function ccHueSortKey(m) {
 // タップすると、そのタグでPlay(スキャッター)が開く。
 const CC_BOARD = {
   every: 12, // 14色ごとに1枚 (2026-11-23 枠を増やした)
-  boundary: { slot: { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, fade: 1, tall: 1.3, over: [-55, -25], img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' } }, // ピンクと白の境目に、数ではなく色で区切って入れる (2026-11-25 Haruna)
+  boundary: { slot: { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right', ar: '5 / 4', fade: 1, over: [-20, -10], img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' } }, // ピンクと白の境目に、数ではなく色で区切って入れる。右側に5:4、上下のチャート間隔を少し広げる (2026-11-25 Haruna)
   slots: [
     { type: 'none' },
     { type: 'none' },
@@ -3718,7 +3718,7 @@ function ccBoardCard(n, ordered, segs, used, slotOverride) {
   card.style.marginLeft = left + '%';
   card.style.backgroundImage = slot.img ? 'url("' + slot.img + '")' : ccBoardBg(slot.tag);
   if (slot.type === 'photo') {
-    card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
+    card.style.aspectRatio = slot.ar || CC_BOARD.photoRatio[slot.size];
     if (slot.fw) { // 2026-11-25 Haruna: 左右だけ画面いっぱいに (高さはそのまま)
       const rp = CC_BOARD.photoRatio[slot.size].split('/').map(Number);
       let hPct = g.w * rp[1] / rp[0];
