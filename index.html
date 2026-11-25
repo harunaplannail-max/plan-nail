@@ -476,7 +476,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);line-break:strict;}
 .color-name,.featured-code,.series-sw-code{line-break:strict;}
-.cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
+.cd-desc{font-size:.8rem;line-height:1.75;color:rgba(255,255,255,.7);margin:0 0 16px;white-space:pre-line;}
+#svdDesc{white-space:pre-line;}
 .cd-name-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;}
 .cd-name-row .cd-name{margin:0;}
 .cd-maker-logo{flex:0 0 auto;background:#fff;border-radius:7px;padding:5px 9px;line-height:0;box-shadow:0 2px 8px rgba(0,0,0,.35);}
@@ -510,7 +511,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .series-panel-img{ width:100%; height:auto; display:block; border-radius:14px; margin-bottom:16px;
   box-shadow:0 8px 20px rgba(0,0,0,.35); }
 .series-panel-name{ font-family:'Special Elite','Kosugi',sans-serif; font-size:1.05rem; margin:0 0 6px; color:#fff; }
-.series-panel-desc{ font-size:.76rem; color:rgba(255,255,255,.65); line-height:1.7; margin:0 0 18px; }
+.series-panel-desc{ font-size:.76rem; color:rgba(255,255,255,.65); line-height:1.75; margin:0 0 18px; white-space:pre-line; }
 .series-panel-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 
 /* GUEST DETAIL: プロフィール+作品集(DESIGNS_DBを「作者」で絞り込んだデザインギャラリー) */
@@ -1966,7 +1967,19 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
 async function fetchNotion(type) {
   const res = await fetch('/api/notion?type=' + type);
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  const data = await res.json();
+  // 画像URLをWebP化+適正サイズにして高速化 (透過PNGもWebPなら潰れない)
+  const rw = (v, key) => {
+    if (typeof v === 'string') {
+      if (!v.includes('lh3.googleusercontent.com')) return v;
+      const isThumb = String(key).toLowerCase().includes('thumb');
+      return v.replace(/=w\d+(?:-rp|-rw)?$/, isThumb ? '=w500-rw' : '=w800-rw');
+    }
+    if (Array.isArray(v)) return v.map(x => rw(x, key));
+    if (v && typeof v === 'object') { for (const k of Object.keys(v)) v[k] = rw(v[k], k); }
+    return v;
+  };
+  return rw(data, '');
 }
 
 // ── 人気分析の記録 ──
@@ -3634,34 +3647,34 @@ function ccHueSortKey(m) {
 // タップすると、そのタグでPlay(スキャッター)が開く。
 const CC_BOARD = {
   every: 12, // 14色ごとに1枚 (2026-11-23 枠を増やした)
-  boundary: { slot: { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right', ar: '4 / 5', over: [-95, 30], img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' } }, // ピンクと白の境目に、数ではなく色で区切って入れる。右側に5:4、上下のチャート間隔を少し広げる (2026-11-25 Haruna)
+  boundary: { slot: { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right', ar: '4 / 5', over: [-95, 30], img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w800-rw' } }, // ピンクと白の境目に、数ではなく色で区切って入れる。右側に5:4、上下のチャート間隔を少し広げる (2026-11-25 Haruna)
   slots: [
     { type: 'none' },
     { type: 'none' },
     { type: 'none' },
-    { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w800-rw' },
     { type: 'none' },
     { type: 'none' }, // Play関連 (元カテゴリカード) 2026-11-25
     { type: 'collage', tag: 'DARK', size: 'M', align: 'left', els: [
-        { img: 'https://lh3.googleusercontent.com/d/1Yg8obyFEQ6uSAnZpJwoLOWM1-13kjx2w=w900-rp', x: 0, y: 8, w: 56, ar: '1 / 1' },
+        { img: 'https://lh3.googleusercontent.com/d/1Yg8obyFEQ6uSAnZpJwoLOWM1-13kjx2w=w800-rw', x: 0, y: 8, w: 56, ar: '1 / 1' },
         { img: 'https://lh3.googleusercontent.com/d/1O4SANsRJCBehZhgUY2Pgstt_RIx0ur4F=w700-rp', x: 31, y: 58, w: 37, ar: '560 / 445', die: 1 } ] },
     { type: 'none' }, // Play関連 (元カテゴリカード) 2026-11-25
     { type: 'none' },
-    { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ol8PD6mPGn31SxIHkwhlFw-Tdd48U1x=w900-rp' },
+    { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ol8PD6mPGn31SxIHkwhlFw-Tdd48U1x=w800-rw' },
     { type: 'none' },
     { type: 'collage', tag: 'DARK', size: 'L', align: 'center', over: 1, els: [
         { img: 'https://lh3.googleusercontent.com/d/1ZopRAvkBumqQVULOLrOmHjWIfbJfuUwH=w700-rp', x: -12, y: -1, w: 124, ar: '700 / 383', die: 1, op: 0.7 } ] },
     { type: 'none' },
     { type: 'collage', tag: 'DARK', size: 'S', align: 'center', els: [
-        { img: 'https://lh3.googleusercontent.com/d/1mG2Md8qfMr_GEsPCYtapSagGGZyW9s17=w900-rp', x: 0, y: 0, w: 74, ar: '1 / 1' },
-        { img: 'https://lh3.googleusercontent.com/d/1k5VGjj6d1okxFcdKxg199gsMVnHnAv9U=w900-rp', x: 30, y: 34, w: 68, ar: '5 / 4' } ] },
+        { img: 'https://lh3.googleusercontent.com/d/1mG2Md8qfMr_GEsPCYtapSagGGZyW9s17=w800-rw', x: 0, y: 0, w: 74, ar: '1 / 1' },
+        { img: 'https://lh3.googleusercontent.com/d/1k5VGjj6d1okxFcdKxg199gsMVnHnAv9U=w800-rw', x: 30, y: 34, w: 68, ar: '5 / 4' } ] },
     { type: 'none' },
     { type: 'none' },
-    { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1G4TeV24IpJzq1_STrYBYIjcbSSUfNOKv=w900-rp' },
-    { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/18qI8zXTJgocQefsoS1Y0gWuwI-T3zz6L=w900-rp' },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1G4TeV24IpJzq1_STrYBYIjcbSSUfNOKv=w800-rw' },
+    { type: 'photo', tag: 'FEMININE', size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/18qI8zXTJgocQefsoS1Y0gWuwI-T3zz6L=w800-rw' },
     { type: 'none' }, // Play関連 (元Play背景カード) 2026-11-25
-    { type: 'photo', tag: 'FEMININE', size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1qFKseDCq05wQ7A9CwIAD_UpdEJG-c_K_=w900-rp' },
-    { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1GcuZWQij6Cozr-Kyg2nEbXwp7w6hJ7RU=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1qFKseDCq05wQ7A9CwIAD_UpdEJG-c_K_=w800-rw' },
+    { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/1GcuZWQij6Cozr-Kyg2nEbXwp7w6hJ7RU=w800-rw' },
     { type: 'none' }, // Play関連 (元Play背景カード) 2026-11-25
   ],
   // カードの幅と左位置(配列の内側の幅に対する%)。L はチップの列の外側の端から端まで
@@ -3962,12 +3975,13 @@ function openColorDetail(c, fromHistory) {
   [c.thumb, c.material, c.photo].forEach(u => { if (u && !imgs.includes(u)) imgs.push(u); });
   // 商品画像 (サムネ以外) を常に1枚目にする (2026-11-25 Haruna)
   if (c.material && imgs.includes(c.material)) { imgs = imgs.filter(u => u !== c.material); imgs.unshift(c.material); }
-  // ヒーロー表示は w700 に軽量化して速くする (写真系のみ。サムネの透過PNGは潰れるので対象外)
-  imgs = imgs.map(u => (u && u !== c.thumb) ? u.replace('=w900-rp', '=w700-rp') : u);
+
 
   const wrap = document.getElementById('cdImgWrap');
   const dots = document.getElementById('cdImgDots');
   wrap.innerHTML = ''; wrap.style.height = '';
+  wrap.scrollLeft = 0;
+  const cdPanelEl = document.querySelector('#cdOverlay .cd-panel'); if (cdPanelEl) cdPanelEl.scrollTop = 0;
   // パーツのヒーロー写真だけ小さめに見せる(実物が数mmのものを画面いっぱいに
   // 広げると大きさの感覚が狂うため)。素材・トレンド・デザインは従来どおり。
   // (トレンド/デザインにはサイズ項目が無いので、サイズ有無の判定で混ざらない)
@@ -4120,6 +4134,7 @@ function openColorDetail(c, fromHistory) {
       b.onclick = (e) => { e.stopPropagation(); if (m !== c) openColorDetail(m); };
       strip.appendChild(b);
     });
+    strip.scrollLeft = 0;
 
   } else {
     strip.style.display = 'none';
@@ -4408,6 +4423,21 @@ function appendInstagramSlide(c, wrap, updateDots) {
   }
 }
 
+// 説明文を読みやすく整形する: 文ごとに改行し、長い文は読点の真ん中で改行
+function formatDescText(text) {
+  if (!text) return '';
+  let t = String(text).replace(/\s+/g, ' ').trim();
+  t = t.replace(/([。！？])\s*/g, '$1\n');
+  t = t.split('\n').map(line => {
+    if (line.length <= 26) return line;
+    const commas = [...line.matchAll(/、/g)].map(m => m.index);
+    if (!commas.length) return line;
+    const mid = line.length / 2;
+    const at = commas.reduce((a, b) => Math.abs(b - mid) < Math.abs(a - mid) ? b : a);
+    return line.slice(0, at + 1) + '\n' + line.slice(at + 1);
+  }).join('\n');
+  return t.replace(/\n+$/, '');
+}
 // 説明文をタイプライターで1文字ずつ打ち出す。サイトの書体(Special Elite)に
 // 必然性を持たせる演出。端末が「視差を減らす」設定なら即時表示にする。
 let cdTypeTimer = null;
@@ -4417,6 +4447,7 @@ function typeDescription(text) {
   el.classList.remove('typing');
   if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
   el.style.display = 'block';
+  text = formatDescText(text);
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     el.textContent = text;
     return;
@@ -4514,7 +4545,7 @@ function openSeriesPopup(seriesName) {
   // パーツの色違い: 同じシリーズ名のパーツを、そのまま並べる
   if (!rep && partMembers.length) {
     const pDesc = (partMembers.find(p => p.seriesDesc) || {}).seriesDesc || '';
-    descEl.textContent = pDesc;
+    descEl.textContent = formatDescText(pDesc);
     descEl.style.display = pDesc ? 'block' : 'none';
     partMembers.forEach(part => {
       const cell = document.createElement('div');
@@ -4544,7 +4575,7 @@ function openSeriesPopup(seriesName) {
     return;
   }
 
-  descEl.textContent = rep.seriesDesc || '';
+  descEl.textContent = formatDescText(rep.seriesDesc || '');
   descEl.style.display = rep.seriesDesc ? 'block' : 'none';
 
   colorList.forEach(code => {
@@ -6974,7 +7005,7 @@ function openDetail(item, img) {
   document.getElementById('svdTag').textContent = item.category || item.tag || item.mood || '';
   breakName(document.getElementById('svdName'), item.name, 11);
   document.getElementById('svdPrice').textContent = item.price || item.maker || '';
-  document.getElementById('svdDesc').textContent = item.desc || '';
+  document.getElementById('svdDesc').textContent = formatDescText(item.desc || '');
   document.getElementById('svDetail').classList.add('open');
 }
 function closeDetail() { document.getElementById('svDetail').classList.remove('open'); }
@@ -7590,8 +7621,8 @@ updateFavCount();
     tries++;
     const urls = [];
     try {
-      if (typeof notionMaterials !== 'undefined') notionMaterials.slice(0, 90).forEach(m => { if (m && m.material) urls.push(m.material.replace('=w900-rp', '=w700-rp')); });
-      if (typeof notionParts !== 'undefined') notionParts.slice(0, 50).forEach(p => { if (p && p.material) urls.push(p.material.replace('=w900-rp', '=w700-rp')); });
+      if (typeof notionMaterials !== 'undefined') notionMaterials.slice(0, 90).forEach(m => { if (m && m.material) urls.push(m.material); });
+      if (typeof notionParts !== 'undefined') notionParts.slice(0, 50).forEach(p => { if (p && p.material) urls.push(p.material); });
     } catch (e) {}
     if (!urls.length && tries < 8) { setTimeout(pre, 1500); return; }
     let qi = 0;
@@ -7611,6 +7642,10 @@ document.querySelectorAll('.sv-topbar').forEach(bar => {
 </script>
 <div id="topTapZone" style="position:fixed;top:0;left:96px;right:96px;height:max(env(safe-area-inset-top),18px);z-index:9998;"></div>
 <script>
+document.addEventListener('error', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.src && !t.dataset.retried) { t.dataset.retried = '1'; const s = t.src; setTimeout(() => { t.src = s; }, 900); }
+}, true);
 document.getElementById('topTapZone').addEventListener('click', () => {
   const cd = document.getElementById('cdOverlay');
   if (cd && cd.classList.contains('open')) {
