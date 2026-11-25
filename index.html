@@ -379,7 +379,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .parts-price-tag{position:absolute;bottom:4px;right:4px;font-family:'Special Elite','Kosugi',sans-serif;font-size:.6rem;letter-spacing:.03em;padding:2px 6px;color:#fff;background:rgba(20,20,20,.75);z-index:1;border-radius:2px;}
 .cd-overlay{position:fixed;inset:0;z-index:9500;background:rgba(20,20,20,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .3s;}
 .cd-overlay.open{opacity:1;pointer-events:all;}
-.cd-panel{position:relative;background:var(--bg3,#2e2e2e);width:90%;max-width:400px;max-height:78vh;overflow-y:auto;border-radius:16px;overscroll-behavior:contain;}
+.cd-panel{position:relative;background:rgba(32,32,38,.50);backdrop-filter:blur(22px) saturate(1.6);-webkit-backdrop-filter:blur(22px) saturate(1.6);border:1px solid rgba(255,255,255,.22);box-shadow:0 24px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.06);width:90%;max-width:400px;max-height:78vh;overflow-y:auto;border-radius:24px;overscroll-behavior:contain;}
 .cd-close{position:absolute;top:10px;right:12px;z-index:2;background:rgba(0,0,0,.5);color:#fff;border:none;width:32px;height:32px;border-radius:50%;font-size:1.2rem;line-height:1;cursor:pointer;}
 .cd-img-outer{position:relative;}
 /* 説明文をタイプ中はカーソルを点滅させる */
@@ -483,7 +483,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .cd-maker-logo img{height:15px;width:auto;display:block;}
 .cd-series-block{padding:12px 20px 0;}
 .cd-series-name{display:inline-block;font-size:.9rem;color:var(--white,#fff);text-decoration:underline;cursor:pointer;}
-.cd-series-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:13px 0 11px;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center;touch-action:pan-x;overscroll-behavior:contain;}
+.cd-series-strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:13px 12px 11px;scroll-padding-left:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center;touch-action:pan-x;overscroll-behavior:contain;}
 .cd-series-strip::-webkit-scrollbar{display:none;}
 .cd-series-chip{flex:0 0 auto;width:44px;aspect-ratio:0.72;padding:0;border:none;border-radius:0;overflow:visible;background:transparent;cursor:pointer;transition:transform .18s ease;}
 .cd-series-chip img{width:100%;height:100%;object-fit:contain;display:block;}
@@ -3960,8 +3960,10 @@ function openColorDetail(c, fromHistory) {
   // 画像は images配列を優先、なければ持っているものをかき集める(素材/デザイン両対応)
   let imgs = (c.images && c.images.length) ? c.images.slice() : [];
   [c.thumb, c.material, c.photo].forEach(u => { if (u && !imgs.includes(u)) imgs.push(u); });
-  // シリーズものは1枚目を商品画像にする (2026-11-25 Haruna)。シリーズじゃないものは今まで通りサムネイルから
-  if (c.series && c.material) { imgs = imgs.filter(u => u !== c.material); imgs.unshift(c.material); }
+  // 商品画像 (サムネ以外) を常に1枚目にする (2026-11-25 Haruna)
+  if (c.material && imgs.includes(c.material)) { imgs = imgs.filter(u => u !== c.material); imgs.unshift(c.material); }
+  // ヒーロー表示は w700 に軽量化して速くする (写真系のみ。サムネの透過PNGは潰れるので対象外)
+  imgs = imgs.map(u => (u && u !== c.thumb) ? u.replace('=w900-rp', '=w700-rp') : u);
 
   const wrap = document.getElementById('cdImgWrap');
   const dots = document.getElementById('cdImgDots');
@@ -7579,5 +7581,31 @@ updateFavCount();
 <button class="menu-fab" onclick="openMenu()" aria-label="メニューを開く">
   <img class="menu-fab-logo" src="assets/images/plan-logo-badge.png" alt="Menu">
 </button>
+<script>
+// 詳細カードの1枚目 (商品画像) を先読みして表示を速くする
+(function(){
+  let tries = 0;
+  function pre(){
+    tries++;
+    const urls = [];
+    try {
+      if (typeof notionMaterials !== 'undefined') notionMaterials.slice(0, 30).forEach(m => { if (m && m.material) urls.push(m.material.replace('=w900-rp', '=w700-rp')); });
+      if (typeof notionParts !== 'undefined') notionParts.slice(0, 20).forEach(p => { if (p && p.material) urls.push(p.material.replace('=w900-rp', '=w700-rp')); });
+    } catch (e) {}
+    if (!urls.length && tries < 8) { setTimeout(pre, 1500); return; }
+    urls.forEach(u => { const i = new Image(); i.src = u; });
+  }
+  setTimeout(pre, 2500);
+})();
+// 上のバー (BACKの行) をタップで一番上まで戻る
+document.querySelectorAll('.sv-topbar').forEach(bar => {
+  bar.addEventListener('click', e => {
+    if (e.target.closest('.sv-back')) return;
+    const ov = bar.closest('.browse-overlay, .series-overlay');
+    const sc = ov ? (ov.querySelector('.browse-overlay-body') || ov) : null;
+    if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
 </body>
 </html>
