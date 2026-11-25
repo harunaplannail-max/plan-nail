@@ -2279,7 +2279,8 @@ async function loadNotionData() {
       document.getElementById('error-banner').classList.add('show');
     }
     notionEvents = Array.isArray(evResult) ? evResult : [];
-    notionParts  = Array.isArray(partsResult) ? partsResult : [];
+    // 2026-11-25 Haruna: 在庫なし(在庫数0)は表示しない (未記入のものは出す)
+    notionParts  = (Array.isArray(partsResult) ? partsResult : []).filter(p => p.stock == null || Number(p.stock) > 0);
     notionTrends = Array.isArray(trendsResult) ? trendsResult : [];
     // メディア・ゲストは表示を待たずにバックグラウンドで取得する。
     // 特にメディアはリンク先のページ情報を読みに行くため時間がかかることがあり、
