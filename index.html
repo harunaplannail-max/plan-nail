@@ -3924,7 +3924,7 @@ let colorDetailHistory = [];
 let currentDetailItem = null;
 
 let cdBadgeFadeTimer = null;
-const MAKER_LOGOS = {};
+const MAKER_LOGOS = {"loade": "https://lh3.googleusercontent.com/d/1ucszVeXrnnCgo7aBe48vMvK0_Ut_pwvh=w700-rp", "KOKOIST": "https://lh3.googleusercontent.com/d/1MRSgKpvjG5mb-qt8RjRQ7K3yCCn7iOwJ=w700-rp", "lem.": "https://lh3.googleusercontent.com/d/1naKcyyU98KP21cW95J54w7m42klRU-Xj=w700-rp", "PREGEL": "https://lh3.googleusercontent.com/d/1Hoilt7dkUqDqvUIaC79mJs2lvsaGipvY=w700-rp", "SHAREDVA": "https://lh3.googleusercontent.com/d/1ehQ-I95rfLba-p8nniWZDFVzdgb_Ebwz=w700-rp", "TOY’s by INITY": "https://lh3.googleusercontent.com/d/1ZBZ5vgWoqfuaFQ83ddPshuVGNPXmV4rl=w700-rp", "INITY": "https://lh3.googleusercontent.com/d/12G2ExgupW75a05MNckrepte91nzVQ_fU=w700-rp", "Putiel": "https://lh3.googleusercontent.com/d/1uXo7bB-vtUo3mbztORdimOAZOLjRixHT=w700-rp", "TRINA": "https://lh3.googleusercontent.com/d/1Fku0lvBqhc1LN3QLXf6gYY8OlQ6s_ggN=w700-rp", "GELGRAPH": "https://lh3.googleusercontent.com/d/10jUccbWdj46rk63s5X4ZPLOI_di26F2R=w700-rp", "CLETO": "https://lh3.googleusercontent.com/d/17WkuONxmbJvCsAz-9bECay-Kf69gjL2P=w700-rp", "enoi": "https://lh3.googleusercontent.com/d/19Tsj0qQvk3YT0SZxT8PWM1D93yZJx-Sg=w700-rp", "Irie": "https://lh3.googleusercontent.com/d/1p8VtS--5idkqZcpaQjPL35kt3kUXxaJg=w700-rp", "ICE GEL": "https://lh3.googleusercontent.com/d/1PbVDP-vBaafoJQXWxy6d_WQarwygoPgm=w700-rp", "ミラージュ": "https://lh3.googleusercontent.com/d/1qUCVqzC966s5CYENhXyza_z66GmF1vLm=w700-rp", "フルーリア": "https://lh3.googleusercontent.com/d/1UjAmHAIZQ5_wha7D1Yf2ddkI-rvw4H4X=w700-rp", "AURORA": "https://lh3.googleusercontent.com/d/1kpawVaGI_T6JhQYTQgt0EJ-fN9zMozxr=w700-rp", "D.nail": "https://lh3.googleusercontent.com/d/1MTHCA-FddR9DPMWnRLSZFQOMo6YaV4E2=w700-rp", "DECOPANIC": "https://lh3.googleusercontent.com/d/1R4sS-VSfaYfeQy7wfDeewWIonjsxGR54=w700-rp", "MATIERE": "https://lh3.googleusercontent.com/d/17GbwXTjjoN5rL71B_ee7vUAPoBoWHUm_=w700-rp", "PRECIOSA": "https://lh3.googleusercontent.com/d/1uVxawVgCv-NVIEFFwoCMmkpXEhULB36i=w700-rp", "SONAIL": "https://lh3.googleusercontent.com/d/1xg7d5u7Rayx9zuhZRJhMTjtdb2q9gtlQ=w700-rp", "シンディベンディ": "https://lh3.googleusercontent.com/d/1D1Z3XAqzmk-rYVzXeInmOCxh5iy5DPx-=w700-rp"};
 function openColorDetail(c, fromHistory) {
   const overlay0 = document.getElementById('colorDetailOverlay');
   if (!fromHistory) {
@@ -3944,6 +3944,8 @@ function openColorDetail(c, fromHistory) {
   // 画像は images配列を優先、なければ持っているものをかき集める(素材/デザイン両対応)
   let imgs = (c.images && c.images.length) ? c.images.slice() : [];
   [c.thumb, c.material, c.photo].forEach(u => { if (u && !imgs.includes(u)) imgs.push(u); });
+  // シリーズものは1枚目を商品画像にする (2026-11-25 Haruna)。シリーズじゃないものは今まで通りサムネイルから
+  if (c.series && c.material) { imgs = imgs.filter(u => u !== c.material); imgs.unshift(c.material); }
 
   const wrap = document.getElementById('cdImgWrap');
   const dots = document.getElementById('cdImgDots');
@@ -4035,11 +4037,16 @@ function openColorDetail(c, fromHistory) {
   // シリーズ全色の横スクロール帯 (2026-11-25 Haruna)。シリーズ名ごと画像のすぐ下に出す
   const sBlock = document.getElementById('cdSeriesBlock');
   const sNameEl = document.getElementById('cdSeriesName');
-  if (!isTrendItem && c.series) {
+  if (!isTrendItem) {
     sBlock.style.display = 'block';
-    sNameEl.textContent = c.series;
-    sNameEl.onclick = (e) => { e.stopPropagation(); openSeriesPopup(c.series); };
-    seriesRow.style.display = 'none';
+    if (c.series) {
+      sNameEl.textContent = c.series;
+      sNameEl.onclick = (e) => { e.stopPropagation(); openSeriesPopup(c.series); };
+      seriesRow.style.display = 'none';
+    } else {
+      sNameEl.textContent = '';
+      sNameEl.onclick = null;
+    }
   } else {
     sBlock.style.display = 'none';
   }
@@ -4066,7 +4073,8 @@ function openColorDetail(c, fromHistory) {
       });
     }
   }
-  if (stripMembers.length >= 2) {
+  if (!isTrendItem && !c.series) stripMembers = [c];
+  if (stripMembers.length >= 2 || (!c.series && stripMembers.length === 1)) {
     strip.style.display = 'flex';
     stripMembers.forEach(m => {
       const b = document.createElement('button');
