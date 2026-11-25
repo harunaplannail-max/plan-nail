@@ -476,13 +476,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);}
 .cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
+.cd-maker-logo{position:absolute;left:12px;bottom:12px;background:#fff;border-radius:7px;padding:5px 9px;line-height:0;box-shadow:0 2px 8px rgba(0,0,0,.35);z-index:5;}
+.cd-maker-logo img{height:15px;width:auto;display:block;}
 .cd-series-block{padding:12px 20px 0;}
 .cd-series-name{display:inline-block;font-size:.9rem;color:var(--white,#fff);text-decoration:underline;cursor:pointer;}
 .cd-series-strip{display:flex;gap:8px;overflow-x:auto;padding:8px 0 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center;}
 .cd-series-strip::-webkit-scrollbar{display:none;}
-.cd-series-chip{flex:0 0 auto;width:44px;aspect-ratio:0.72;padding:0;border:none;border-radius:0;overflow:hidden;background:transparent;cursor:pointer;}
+.cd-series-chip{flex:0 0 auto;width:44px;aspect-ratio:0.72;padding:0;border:none;border-radius:0;overflow:visible;background:transparent;cursor:pointer;transition:transform .18s ease;}
 .cd-series-chip img{width:100%;height:100%;object-fit:contain;display:block;}
-.cd-series-chip.on{width:53px;}
+.cd-series-chip.on{transform:scale(1.22);}
 .cd-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;}
 .cd-used-items-wrap{display:none;padding:9px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;}
 .cd-used-items-wrap.show{display:block;}
@@ -1704,6 +1706,7 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
     <div class="cd-img-outer">
       <div class="cd-img-wrap" id="cdImgWrap"></div>
       <span class="cd-badge-corner" id="cdBadgeCorner"></span>
+      <span class="cd-maker-logo" id="cdMakerLogo" style="display:none;"><img id="cdMakerLogoImg" alt=""></span>
       <div class="cd-fav-heart-wrap" id="cdFavHeartWrap"></div>
     </div>
     <div class="cd-img-dots" id="cdImgDots"></div>
@@ -1720,7 +1723,7 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
       <h3 id="cdName" class="cd-name"></h3>
       <p id="cdDesc" class="cd-desc"></p>
       <div class="cd-row" id="cdMakerRow"><span class="cd-label">メーカー</span><span id="cdMaker" class="cd-value"></span></div>
-      <div class="cd-row"><span class="cd-label" id="cdCategoryLabel">カテゴリ</span><span id="cdCategory" class="cd-value"></span></div>
+      <div class="cd-row" id="cdCategoryRow" style="display:none;"><span class="cd-label" id="cdCategoryLabel">カテゴリ</span><span id="cdCategory" class="cd-value"></span></div>
       <div class="cd-row" id="cdMoodRow"><span class="cd-label">ムード</span><span id="cdMood" class="cd-value"></span></div>
       <div class="cd-row" id="cdSeriesRow"><span class="cd-label">シリーズ</span><span id="cdSeries" class="cd-value cd-series-link"></span></div>
       <div class="cd-row" id="cdCraftRow"><span class="cd-label">技法</span><span id="cdCraft" class="cd-value"></span></div>
@@ -3921,6 +3924,7 @@ let colorDetailHistory = [];
 let currentDetailItem = null;
 
 let cdBadgeFadeTimer = null;
+const MAKER_LOGOS = {};
 function openColorDetail(c, fromHistory) {
   const overlay0 = document.getElementById('colorDetailOverlay');
   if (!fromHistory) {
@@ -4010,11 +4014,14 @@ function openColorDetail(c, fromHistory) {
 
   document.getElementById('cdName').textContent = c.name || '';
   const isTrendItem = c.__src === 'trend';
-  document.getElementById('cdMakerRow').style.display = isTrendItem ? 'none' : 'flex';
+  document.getElementById('cdMakerRow').style.display = 'none';
   document.getElementById('cdMaker').textContent = c.maker || c.tag || '—';
+  const mlEl = document.getElementById('cdMakerLogo');
+  const mlUrl = (!isTrendItem && c.maker && typeof MAKER_LOGOS !== 'undefined') ? MAKER_LOGOS[c.maker] : null;
+  if (mlUrl) { document.getElementById('cdMakerLogoImg').src = mlUrl; mlEl.style.display = 'block'; } else { mlEl.style.display = 'none'; }
   document.getElementById('cdCategoryLabel').textContent = isTrendItem ? 'ムード' : 'カテゴリ';
   document.getElementById('cdCategory').textContent = c.category || '—';
-  document.getElementById('cdMoodRow').style.display = isTrendItem ? 'none' : 'flex';
+  document.getElementById('cdMoodRow').style.display = 'none';
   document.getElementById('cdMood').textContent = c.mood || '—';
   const seriesRow = document.getElementById('cdSeriesRow');
   const seriesEl = document.getElementById('cdSeries');
@@ -4076,7 +4083,7 @@ function openColorDetail(c, fromHistory) {
       b.onclick = (e) => { e.stopPropagation(); if (m !== c) openColorDetail(m); };
       strip.appendChild(b);
     });
-    requestAnimationFrame(() => { const on = strip.querySelector('.on'); if (on) strip.scrollLeft = Math.max(0, on.offsetLeft - 12); });
+
   } else {
     strip.style.display = 'none';
   }
