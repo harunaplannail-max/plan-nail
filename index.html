@@ -476,10 +476,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .collage-text-modal-actions .fav-collage-btn{flex:1;padding:10px;font-size:.72rem;}
 .cd-name{font-family:'Special Elite','Kosugi',sans-serif;font-size:1.2rem;margin:0 0 10px;color:var(--white);}
 .cd-desc{font-size:.8rem;line-height:1.7;color:rgba(255,255,255,.7);margin:0 0 16px;}
-.cd-series-strip{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.cd-series-block{padding:12px 20px 0;}
+.cd-series-name{display:inline-block;font-size:.9rem;color:var(--white,#fff);text-decoration:underline;cursor:pointer;}
+.cd-series-strip{display:flex;gap:8px;overflow-x:auto;padding:8px 0 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .cd-series-strip::-webkit-scrollbar{display:none;}
 .cd-series-chip{flex:0 0 auto;width:44px;aspect-ratio:0.72;padding:0;border:none;border-radius:0;overflow:hidden;background:transparent;cursor:pointer;opacity:.55;}
-.cd-series-chip img{width:100%;height:100%;object-fit:cover;display:block;}
+.cd-series-chip img{width:100%;height:100%;object-fit:contain;display:block;}
 .cd-series-chip.on{opacity:1;}
 .cd-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;}
 .cd-used-items-wrap{display:none;padding:9px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.78rem;}
@@ -1705,6 +1707,10 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
       <div class="cd-fav-heart-wrap" id="cdFavHeartWrap"></div>
     </div>
     <div class="cd-img-dots" id="cdImgDots"></div>
+    <div id="cdSeriesBlock" class="cd-series-block" style="display:none;">
+      <div id="cdSeriesName" class="cd-series-name"></div>
+      <div id="cdSeriesStrip" class="cd-series-strip" style="display:none;"></div>
+    </div>
     <div class="cd-true-size" id="cdTrueSize">
       <div class="cd-true-size-head"><span class="cd-true-size-label">実際の大きさ</span><span class="cd-true-size-cap" id="cdTrueSizeCap"></span></div>
       <div class="cd-true-size-box"><img id="cdTrueSizeImg" alt="実際の大きさ"></div>
@@ -1713,7 +1719,6 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
     <div class="cd-body">
       <h3 id="cdName" class="cd-name"></h3>
       <p id="cdDesc" class="cd-desc"></p>
-      <div id="cdSeriesStrip" class="cd-series-strip" style="display:none;"></div>
       <div class="cd-row" id="cdMakerRow"><span class="cd-label">メーカー</span><span id="cdMaker" class="cd-value"></span></div>
       <div class="cd-row"><span class="cd-label" id="cdCategoryLabel">カテゴリ</span><span id="cdCategory" class="cd-value"></span></div>
       <div class="cd-row" id="cdMoodRow"><span class="cd-label">ムード</span><span id="cdMood" class="cd-value"></span></div>
@@ -4020,7 +4025,17 @@ function openColorDetail(c, fromHistory) {
   } else {
     seriesRow.style.display = 'none';
   }
-  // シリーズ全色の横スクロール帯 (2026-11-25 Haruna)
+  // シリーズ全色の横スクロール帯 (2026-11-25 Haruna)。シリーズ名ごと画像のすぐ下に出す
+  const sBlock = document.getElementById('cdSeriesBlock');
+  const sNameEl = document.getElementById('cdSeriesName');
+  if (!isTrendItem && c.series) {
+    sBlock.style.display = 'block';
+    sNameEl.textContent = c.series;
+    sNameEl.onclick = (e) => { e.stopPropagation(); openSeriesPopup(c.series); };
+    seriesRow.style.display = 'none';
+  } else {
+    sBlock.style.display = 'none';
+  }
   const strip = document.getElementById('cdSeriesStrip');
   strip.innerHTML = '';
   let stripMembers = [];
