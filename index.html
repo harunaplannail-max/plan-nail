@@ -3618,8 +3618,8 @@ function ccHueSortKey(m) {
 const CC_BOARD = {
   every: 12, // 14色ごとに1枚 (2026-11-23 枠を増やした)
   slots: [
-    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
-    { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', img: 'https://lh3.googleusercontent.com/d/1iHaVjNGKxokrMYyOG7dJ9HSFtMM1FcoP=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'W', align: 'center', fw: 1, img: 'https://lh3.googleusercontent.com/d/12ZJfCEIUs-SFzEpM_b_v53wZHUcfmSdU=w900-rp' },
+    { type: 'photo', tag: 'FEMININE', size: 'M', align: 'center', fw: 1, img: 'https://lh3.googleusercontent.com/d/1iHaVjNGKxokrMYyOG7dJ9HSFtMM1FcoP=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'right',  img: 'https://lh3.googleusercontent.com/d/198QKkOIDYBz0J8LBTLt0kbbLGOA7UQX_=w900-rp' },
     { type: 'photo', tag: 'DARK',     size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp' },
     { type: 'none' },
@@ -3718,6 +3718,12 @@ function ccBoardCard(n, ordered, segs, used) {
   card.style.backgroundImage = slot.img ? 'url("' + slot.img + '")' : ccBoardBg(slot.tag);
   if (slot.type === 'photo') {
     card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
+    if (slot.fw) { // 2026-11-25 Haruna: 左右だけ画面いっぱいに (高さはそのまま)
+      const rp = CC_BOARD.photoRatio[slot.size].split('/').map(Number);
+      const hPct = g.w * rp[1] / rp[0];
+      card.style.width = '118%'; card.style.marginLeft = '-9%';
+      card.style.aspectRatio = (118 / hPct).toFixed(3);
+    }
   } else if (slot.type === 'collage') {
     card.style.aspectRatio = CC_BOARD.photoRatio[slot.size];
     card.style.backgroundImage = 'none';
