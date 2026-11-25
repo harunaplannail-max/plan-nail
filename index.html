@@ -3633,7 +3633,7 @@ const CC_BOARD = {
     { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ol8PD6mPGn31SxIHkwhlFw-Tdd48U1x=w900-rp' },
     { type: 'none' },
     { type: 'collage', tag: 'DARK', size: 'L', align: 'center', over: 1, els: [
-        { img: 'https://lh3.googleusercontent.com/d/1ZopRAvkBumqQVULOLrOmHjWIfbJfuUwH=w700-rp', x: -12, y: -1, w: 124, ar: '700 / 383', die: 1 } ] },
+        { img: 'https://lh3.googleusercontent.com/d/1ZopRAvkBumqQVULOLrOmHjWIfbJfuUwH=w700-rp', x: -12, y: -1, w: 124, ar: '700 / 383', die: 1, op: 0.7 } ] },
     { type: 'none' },
     { type: 'collage', tag: 'DARK', size: 'S', align: 'center', els: [
         { img: 'https://lh3.googleusercontent.com/d/1mG2Md8qfMr_GEsPCYtapSagGGZyW9s17=w900-rp', x: 0, y: 0, w: 74, ar: '1 / 1' },
@@ -3729,6 +3729,7 @@ function ccBoardCard(n, ordered, segs, used) {
       el.style.left = e.x + '%'; el.style.top = e.y + '%'; el.style.width = e.w + '%';
       el.style.aspectRatio = e.ar || '1 / 1';
       el.style.backgroundImage = 'url("' + e.img + '")';
+      if (e.op != null) el.style.opacity = e.op;
       card.appendChild(el);
     });
   } else {
