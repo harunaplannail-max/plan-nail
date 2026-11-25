@@ -307,7 +307,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 /* 配列のまわりの余白:左右16px・上18px・下26px(カード位置の%はこの内側の幅が基準) */
 #colors .color-grid.cc-field{display:block;padding:18px 16px 26px;}
 /* 段の高さは JS が padding-bottom(カード高さ+縦ずれの余白10px)で確保する。段と段の間は30px */
-#colors .cc-field-row{position:relative;height:0;margin-bottom:30px;}
+#colors .cc-field-row{position:relative;height:0;margin-bottom:30px;z-index:1;}
 /* カード:段の中に絶対配置。枠・背景なし。影や傾きが切れないよう overflow を開け、
    content-visibility(描画の省略)と仮の大きさ指定は使わない(実機で幅が効かなくなる原因になるため) */
 #colors .cc-field .color-card{position:absolute;top:0;aspect-ratio:.72;overflow:visible;
@@ -3632,7 +3632,7 @@ const CC_BOARD = {
         { img: 'https://lh3.googleusercontent.com/d/1yMIZs3BeE1x72Gsmci-G8M_GlXt0Bowr=w900-rp', x: 6, y: 58, w: 27, ar: '3 / 4' } ] },
     { type: 'photo', tag: 'HOLIDAY',  size: 'S', align: 'center', img: 'https://lh3.googleusercontent.com/d/12ol8PD6mPGn31SxIHkwhlFw-Tdd48U1x=w900-rp' },
     { type: 'none' },
-    { type: 'collage', tag: 'DARK', size: 'L', align: 'center', els: [
+    { type: 'collage', tag: 'DARK', size: 'L', align: 'center', over: 1, els: [
         { img: 'https://lh3.googleusercontent.com/d/1ZopRAvkBumqQVULOLrOmHjWIfbJfuUwH=w700-rp', x: -12, y: -1, w: 124, ar: '700 / 383', die: 1 } ] },
     { type: 'none' },
     { type: 'collage', tag: 'DARK', size: 'S', align: 'center', els: [
@@ -3754,6 +3754,9 @@ function ccBoardCard(n, ordered, segs, used) {
   // Harunaのムード写真・コラージュは飾りなので開かない (2026-11-23)
   // 2026-11-25 Haruna: 一旦Playに飛ぶ所は全部なくす (戻す時はこのブロックを元の分岐に戻す)
   card.style.cursor = 'default';
+  if (slot.over) { // 上下のチャートをこのカードに被せる (真ん中に少しだけ間)
+    card.style.marginTop = '-100px'; card.style.marginBottom = '-70px'; card.style.zIndex = '0';
+  }
   return card;
 }
 let ccFieldLastSegs = 0;
