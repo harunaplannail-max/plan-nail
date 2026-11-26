@@ -429,8 +429,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 .fav-collage-btn:active{background:rgba(159,184,196,.18);}
 
 /* コラージュ画面はスクロール無しで全部を1画面に収める */
-.collage-overlay-full{align-items:stretch;}
-.collage-panel-full{max-width:none;max-height:none;height:100vh;height:100dvh;width:100%;border-radius:0;display:flex;flex-direction:column;padding:16px 16px calc(14px + env(safe-area-inset-bottom));overflow:hidden;}
+.collage-overlay-full{align-items:stretch;padding:0;}
+.collage-top-btn{font-family:'Special Elite','Kosugi',sans-serif;font-size:.78rem;letter-spacing:.08em;background:none;border:none;cursor:pointer;color:inherit;text-align:right;padding:4px 0;white-space:nowrap;}
+#homeCollageBtn{position:fixed;top:calc(env(safe-area-inset-top) + 12px);right:16px;z-index:8999;color:var(--white);text-shadow:0 1px 8px rgba(0,0,0,.45);}
+.collage-panel-full{max-width:none;max-height:none;height:100%;width:100%;border-radius:0;display:flex;flex-direction:column;padding:16px 16px calc(14px + env(safe-area-inset-bottom));overflow:hidden;}
 .collage-panel-full .collage-canvas-wrap{flex:1;min-height:0;margin:34px 0 12px;display:flex;align-items:center;justify-content:center;}
 .collage-panel-full #collageCanvas{width:auto;height:auto;max-width:100%;max-height:100%;}
 .collage-panel-full .collage-edit-toolbar{flex-shrink:0;margin-bottom:10px;}
@@ -1113,6 +1115,7 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
 </head>
 <body>
 <div id="fixedBg"></div>
+<button id="homeCollageBtn" class="collage-top-btn" onclick="openCollage()">コラージュ</button>
 
 <!-- loading -->
 <div class="loading-overlay" id="loading">
@@ -1268,7 +1271,7 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
   <div class="sv-topbar">
     <button class="sv-back" onclick="closeColorOverlay()">← BACK</button>
     <span class="sv-title">COLORS</span>
-    <span style="width:70px;"></span>
+    <button class="collage-top-btn" onclick="openCollage()">コラージュ</button>
   </div>
   <div class="browse-overlay-body">
   <section class="pub-section" id="colors">
@@ -1348,7 +1351,7 @@ textarea{resize:vertical;min-height:68px;line-height:1.6;}
   <div class="sv-topbar">
     <button class="sv-back" onclick="closePartsOverlay()">← BACK</button>
     <span class="sv-title">PARTS</span>
-    <span style="width:70px;"></span>
+    <button class="collage-top-btn" onclick="openCollage()">コラージュ</button>
   </div>
   <div class="browse-overlay-body">
   <section class="pub-section" id="parts">
