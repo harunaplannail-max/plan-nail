@@ -4441,6 +4441,7 @@ function typeDescription(text) {
   el.classList.remove('typing');
   if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
   el.style.display = 'block';
+  if (window.__planEN && window.__planEN[text]) text = window.__planEN[text];
   text = formatDescText(text);
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     el.textContent = text;
@@ -7649,6 +7650,46 @@ document.getElementById('topTapZone').addEventListener('click', () => {
   if (ovs.length) { ovs[ovs.length - 1].scrollTo({ top: 0, behavior: 'smooth' }); return; }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
+</script>
+<script>
+/* 英語モード: スマホの言語が英語の時だけ、辞書で表示文言を英語に切り替える (2026-11-26) */
+(function(){
+  var l = ((navigator.languages && navigator.languages[0]) || navigator.language || 'ja').toLowerCase();
+  if (l.indexOf('en') !== 0) return;
+  document.documentElement.lang = 'en';
+  fetch('i18n-en.json').then(function(r){ return r.json(); }).then(function(dict){
+    window.__planEN = dict;
+    var pats = [ [/^(\d+)件$/, '$1 items'], [/^全(\d+)色$/, 'All $1 colors'], [/^(\d+)色$/, '$1 colors'] ];
+    function tr(text){
+      if (!text) return null;
+      var t = text.trim();
+      if (!t) return null;
+      if (dict[t]) return text.replace(t, dict[t]);
+      for (var i = 0; i < pats.length; i++) if (pats[i][0].test(t)) return text.replace(t, t.replace(pats[i][0], pats[i][1]));
+      return null;
+    }
+    function walk(root){
+      if (!root) return;
+      var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function(n){
+        if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        var p = n.parentElement;
+        if (!p || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }});
+      var nodes = [], n;
+      while ((n = w.nextNode())) nodes.push(n);
+      for (var i = 0; i < nodes.length; i++) { var r = tr(nodes[i].nodeValue); if (r !== null) nodes[i].nodeValue = r; }
+      if (root.querySelectorAll) root.querySelectorAll('[placeholder]').forEach(function(el){ var r2 = tr(el.getAttribute('placeholder')); if (r2 !== null) el.setAttribute('placeholder', r2.trim()); });
+    }
+    var pending = false;
+    var obs = new MutationObserver(function(){
+      if (pending) return; pending = true;
+      setTimeout(function(){ pending = false; obs.disconnect(); walk(document.body); obs.observe(document.body, { childList: true, subtree: true, characterData: true }); }, 150);
+    });
+    walk(document.body);
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }).catch(function(){});
+})();
 </script>
 </body>
 </html>
