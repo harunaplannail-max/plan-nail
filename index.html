@@ -3640,9 +3640,9 @@ const CC_BOARD = {
     { type: 'none' },
     { type: 'none' },
     { type: 'none' },
-    { type: 'collage', tag: 'DARK',   size: 'S', align: 'center', els: [
+    { type: 'collage', tag: 'DARK',   size: 'S', align: 'right', gap: 30, els: [
         { img: 'https://lh3.googleusercontent.com/d/1QsSgL7aOfc5Z-2LJf0eXdIxLDk8sxe8u=w900-rp', x: 0, y: 0, w: 100, ar: '1 / 1' },
-        { img: 'https://lh3.googleusercontent.com/d/11UN9URqg6l2uRBGD6oD35hShAa-MhLFw=w700-rp', x: 52, y: 18, w: 88, ar: '700 / 934', die: 1, rot: 45 } ] }, // 石の写真(正方形)の対角に沿わせて、レースをさらに右回転 (2026-11-26 Haruna)
+        { img: 'https://lh3.googleusercontent.com/d/11UN9URqg6l2uRBGD6oD35hShAa-MhLFw=w700-rp', x: 36, y: 2, w: 74, ar: '700 / 934', die: 1, rot: 45 } ] }, // 組み合わせを右寄せ+上下に間 (2026-11-26 Haruna) // 石の写真(正方形)の対角に沿わせて、レースをさらに右回転 (2026-11-26 Haruna)
     { type: 'none' },
     { type: 'none' }, // Play関連 (元カテゴリカード) 2026-11-25
     { type: 'collage', tag: 'DARK', size: 'M', align: 'left', els: [
@@ -3786,6 +3786,9 @@ function ccBoardCard(n, ordered, segs, used, slotOverride) {
   if (slot.fade) { // 上下端をグラデーションで透明に (真ん中が濃い)
     const m = 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 32%, rgba(0,0,0,1) 68%, rgba(0,0,0,0) 100%)';
     card.style.webkitMaskImage = m; card.style.maskImage = m;
+  }
+  if (slot.gap) { // 上下のチャートと干渉しないよう間を開ける (2026-11-26)
+    card.style.marginTop = slot.gap + 'px'; card.style.marginBottom = slot.gap + 'px';
   }
   if (slot.over) { // 上下のチャートをこのカードに被せる (真ん中に少しだけ間)
     const ov = Array.isArray(slot.over) ? slot.over : [-80, -50];
