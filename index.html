@@ -435,9 +435,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;justify-content
 #homeCollageBtn{position:fixed;top:calc(env(safe-area-inset-top) + 10px);right:14px;z-index:8999;}
 #homeCollageBtn svg{stroke:rgba(255,255,255,.9);filter:drop-shadow(0 1px 6px rgba(0,0,0,.5));}
 .collage-panel-full{max-width:none;max-height:none;height:100%;width:100%;border-radius:0;display:flex;flex-direction:column;padding:16px 16px calc(14px + env(safe-area-inset-bottom));overflow:hidden;}
-.collage-panel-full .collage-canvas-wrap{flex:1;min-height:0;margin:34px 0 12px;display:flex;align-items:center;justify-content:center;}
+.collage-panel-full .collage-canvas-wrap{flex:1;min-height:0;margin:28px 0 10px;display:flex;align-items:center;justify-content:center;}
 .collage-panel-full #collageCanvas{width:auto;height:auto;max-width:100%;max-height:100%;}
-.collage-panel-full .collage-edit-toolbar{flex-shrink:0;margin-bottom:10px;}
+.collage-panel-full .collage-edit-toolbar{flex-shrink:0;margin-bottom:8px;gap:6px;}
+.collage-panel-full .collage-edit-toolbar .edit-icon-btn{flex:1 1 0;max-width:42px;height:auto;aspect-ratio:1;}
+.collage-panel-full .collage-bg-palette,.collage-panel-full .collage-pen-palette{margin-bottom:8px;}
+#collageSaveBtn{border-color:var(--c1);background:rgba(159,184,196,.14);}
 .collage-panel-full .collage-pen-palette{flex-shrink:0;}
 .collage-panel-full .collage-actions{flex-shrink:0;}
 .collage-panel-full .collage-text-modal{border-radius:0;}
@@ -1837,6 +1840,9 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
       <button class="edit-icon-btn" id="collageBgBtn" onclick="collageToggleBgPalette()" aria-label="背景">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15l5-5 4 4 4-5 5 6" stroke-linejoin="round"/></svg>
       </button>
+      <button class="edit-icon-btn" id="collageSaveBtn" onclick="downloadCollage()" aria-label="保存">
+        <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M4 19h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
     <div class="collage-bg-palette" id="collageBgPalette">
       <span class="bg-swatch active" style="background:linear-gradient(#3a3a3a,#1c1c1c)" onclick="collageSetBg('gray', this)" aria-label="グレー"></span>
@@ -1856,9 +1862,6 @@ function menuLightboxNav(dir){ menuLbIndex=(menuLbIndex+dir+menuImages.length)%m
       <span class="pen-color-dot" style="background:#ffe600" onclick="collageSetPenColor('#ffe600', this)"></span>
       <span class="pen-color-dot" style="background:#111111" onclick="collageSetPenColor('#111111', this)"></span>
       <input type="range" id="collagePenWidth" min="2" max="24" value="6">
-    </div>
-    <div class="collage-actions">
-      <button class="fav-collage-btn" id="collageDownloadBtn" onclick="downloadCollage()">保存</button>
     </div>
     <div class="collage-text-modal" id="collageTextModal">
       <div class="collage-text-modal-box">
