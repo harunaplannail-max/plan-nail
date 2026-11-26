@@ -4974,7 +4974,7 @@ function onCollagePointerMove(e) {
     const pts = Array.from(collageActivePointers.values());
     const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
     const scale = dist / collagePinch.startDist;
-    const MIN = 90, MAX = 460;
+    const MIN = 90, MAX = 1500; // 2026-11-26 Haruna: もっと大きくできるように上限を引き上げ
     collagePinch.item.w = Math.max(MIN, Math.min(MAX, collagePinch.startW * scale));
     collagePinch.item.h = Math.max(MIN, Math.min(MAX, collagePinch.startH * scale));
     const angle = Math.atan2(pts[1].y-pts[0].y, pts[1].x-pts[0].x) * 180 / Math.PI;
